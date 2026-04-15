@@ -81,20 +81,32 @@ async def scrape():
     return pd.DataFrame(rows)
 
 # =========================
-# EXTRACTION
+# EXTRACTION (VERSION STABLE)
 # =========================
 def process(df):
 
-    df["txt"] = df["html"].str.replace("\u202f", " ").str.replace("\xa0", " ")
+    def clean(txt):
+        if pd.isna(txt):
+            return ""
+        return txt.replace("\u202f", " ").replace("\xa0", " ")
 
-    def extract(label, txt):
-        m = re.search(label + r".*?([\d\s]+)\s?€", txt, re.I)
-        if m:
-            return int(re.sub(r"[^\d]", "", m.group(1)))
+    df["txt"] = df["html"].apply(clean)
+
+    def extract_label(labels, txt):
+        for label in labels:
+            m = re.search(label + r".*?([\d\s]+)\s?€", txt, re.I)
+            if m:
+                value = m.group(1)
+                if not value:
+                    continue
+                digits = re.sub(r"[^\d]", "", value)
+                if digits:
+                    return int(digits)
         return None
 
-    df["bouquet"] = df["txt"].apply(lambda x: extract("Bouquet", x))
-    df["rente"] = df["txt"].apply(lambda x: extract("Rente|Mensual", x))
+    df["bouquet"] = df["txt"].apply(lambda x: extract_label(["Bouquet"], x))
+    df["rente"] = df["txt"].apply(lambda x: extract_label(["Rente", "Mensual"], x))
+
     df["age"] = df["txt"].str.extract(r"(\d{2})\s*ans").astype(float)
     df["cp"] = df["txt"].str.extract(r"\((\d{5})\)")
 
@@ -126,7 +138,6 @@ def enrich(df):
 # MAP
 # =========================
 def create_map(df):
-
     m = folium.Map(location=[46.5, 2.5], zoom_start=6)
 
     for _, row in df.dropna(subset=["lat"]).iterrows():
@@ -161,13 +172,13 @@ async def main():
 
     new_df = df[~df["url"].isin(old_ids)]
 
-    # save historique
+    # sauvegarde
     df[["url"]].to_csv(HISTORY_FILE, index=False)
 
     print(f"🆕 {len(new_df)} nouvelles annonces")
 
     if len(new_df) > 0:
-        send_telegram(f"🔥 {len(new_df)} nouvelles annonces !")
+        send_telegram(f"🔥 {len(new_df)} nouvelles annonces")
 
         for _, row in new_df.head(10).iterrows():
             send_telegram(f"{row['age']} ans\n{row['url']}")
