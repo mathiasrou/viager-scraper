@@ -2,9 +2,11 @@
 """
 Created on Wed Apr 15 10:49:11 2026
 
+
 @author: M_a_t
 """
-
+import requests
+import os
 import asyncio
 import pandas as pd
 import re
@@ -16,6 +18,31 @@ URL = "https://www.costes-viager.com/acheter/annonces"
 # =========================
 # SCRAPING
 # =========================
+def send_telegram(message, file_path=None):
+
+    TOKEN = os.getenv("TELEGRAM_TOKEN")
+    CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not TOKEN or not CHAT_ID:
+        print("❌ TOKEN ou CHAT_ID manquant")
+        return
+
+    # message texte
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    requests.post(url, data={
+        "chat_id": CHAT_ID,
+        "text": message
+    })
+
+    # fichier (carte)
+    if file_path:
+        url_file = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
+        with open(file_path, "rb") as f:
+            requests.post(url_file, files={"document": f}, data={"chat_id": CHAT_ID})
+
+    print("📩 Telegram envoyé")
+
+
 async def scrape():
     rows = []
 
@@ -211,7 +238,10 @@ async def main():
     df.to_csv("resultat_final.csv", index=False)
 
     print(f"✅ FIN : {len(df)} annonces exploitables")
-
+    send_telegram(
+    f"✅ Scraping terminé\n{len(df)} annonces exploitables",
+    "carte_finale_totale.html"
+)
 # =========================
 # EXECUTION
 # =========================
