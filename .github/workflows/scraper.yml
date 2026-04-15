@@ -1,8 +1,6 @@
 name: Scraper Viager
 
 on:
-  schedule:
-    - cron: "0 7 * * *"  # tous les jours 7h
   workflow_dispatch:
 
 jobs:
@@ -10,26 +8,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Récupérer code
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Installer Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
 
-      - name: Installer dépendances
+      - name: Installer dépendances système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3 \
+            libatk-bridge2.0-0 \
+            libgtk-3-0 \
+            libx11-xcb1 \
+            libxcb-dri3-0 \
+            libxcomposite1 \
+            libxdamage1 \
+            libxrandr2 \
+            libgbm1 \
+            libasound2
+
+      - name: Installer Python
         run: |
           pip install pandas playwright folium requests
-          python -m playwright install --with-deps
+          python -m playwright install chromium
 
-      - name: Lancer script
+      - name: Run script
         run: python carte_finale_totale.py
-
-      - name: Sauvegarder fichiers
-        uses: actions/upload-artifact@v4
-        with:
-          name: resultats
-          path: |
-            *.csv
-            *.html
