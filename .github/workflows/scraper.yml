@@ -18,25 +18,10 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Installer dépendances système
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libnss3 \
-            libatk-bridge2.0-0 \
-            libgtk-3-0 \
-            libx11-xcb1 \
-            libxcb-dri3-0 \
-            libxcomposite1 \
-            libxdamage1 \
-            libxrandr2 \
-            libgbm1 \
-            libasound2
-      
-      - name: Installer Python + Playwright
+      - name: Installer dépendances
         run: |
           pip install pandas playwright folium requests
-          python -m playwright install chromium
+          python -m playwright install --with-deps
 
       - name: Lancer script
         run: python carte_finale_totale.py
