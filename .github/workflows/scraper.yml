@@ -1,0 +1,35 @@
+name: Scraper Viager
+
+on:
+  schedule:
+    - cron: "0 7 * * *"  # tous les jours 7h
+  workflow_dispatch:
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer code
+        uses: actions/checkout@v3
+
+      - name: Installer Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Installer dépendances
+        run: |
+          pip install pandas playwright folium requests
+          playwright install
+
+      - name: Lancer script
+        run: python script.py
+
+      - name: Sauvegarder fichiers
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultats
+          path: |
+            *.csv
+            *.html
