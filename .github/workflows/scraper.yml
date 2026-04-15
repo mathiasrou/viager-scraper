@@ -1,6 +1,8 @@
 name: Scraper Viager
 
 on:
+  schedule:
+    - cron: '0 9 * * *'  # 11h Paris
   workflow_dispatch:
 
 jobs:
@@ -9,7 +11,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -34,10 +36,18 @@ jobs:
       - name: Installer Python
         run: |
           pip install pandas playwright folium requests
-          python -m playwright install chromium
+          playwright install
 
       - name: Run script
-        run: python -u carte_finale_totale.py
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python carte_finale_totale.py
+
+      - name: Commit historique
+        run: |
+          git config --global user.name "bot"
+          git config --global user.email "bot@github.com"
+          git add historique_ids.csv
+          git commit -m "update historique" || echo "no changes"
+          git push
