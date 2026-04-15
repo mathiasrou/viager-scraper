@@ -24,7 +24,7 @@ jobs:
           playwright install
 
       - name: Lancer script
-        run: python script.py
+        run: python carte_finale_totale.py
 
       - name: Sauvegarder fichiers
         uses: actions/upload-artifact@v4
