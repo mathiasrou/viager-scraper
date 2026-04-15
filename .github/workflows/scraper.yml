@@ -37,4 +37,4 @@ jobs:
           python -m playwright install chromium
 
       - name: Run script
-        run: python carte_finale_totale.py
+        run: python -u carte_finale_totale.py
