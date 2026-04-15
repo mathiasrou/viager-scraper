@@ -136,7 +136,7 @@ def enrich(df):
         ((df["bouquet"].isna()) | (df["bouquet"] <= 150000))
     ]
 
-    geo = pd.read_csv(r"C:\Users\M_a_t\.spyder-py3\base-officielle-codes-postaux.csv")
+    geo = pd.read_csv("base-officielle-codes-postaux.csv")
     geo = geo[["code_postal", "latitude", "longitude"]]
     geo.columns = ["cp", "lat", "lon"]
 
