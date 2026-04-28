@@ -79,8 +79,15 @@ async def scrape():
             })
 
         await browser.close()
+    df = pd.DataFrame(rows)
 
-    return pd.DataFrame(rows)
+    # 🔥 SUPPRESSION DES DOUBLONS
+    df = df.drop_duplicates(subset=["url"])
+    
+    print(f"🧹 Après dédoublonnage : {len(df)}")
+    
+    return df 
+
 
 # =========================
 # EXTRACTION (VERSION STABLE)
