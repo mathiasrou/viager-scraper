@@ -1,42 +1,31 @@
-name: Scraper Viager
+name: scraper
 
 on:
   schedule:
-    - cron: '0 9 * * *'  # 11h Paris
+    - cron: '0 11 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  run-scraper:
+  run:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
-      - name: Installer dépendances système
-        run: |
+      - run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libnss3 \
-            libatk-bridge2.0-0 \
-            libgtk-3-0 \
-            libx11-xcb1 \
-            libxcb-dri3-0 \
-            libxcomposite1 \
-            libxdamage1 \
-            libxrandr2 \
-            libgbm1 \
-            libasound2t64
+          sudo apt-get install -y libnss3 libatk-bridge2.0-0 libgtk-3-0 libx11-xcb1 libxcb-dri3-0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2t64
 
-      - name: Installer Python
-        run: |
+      - run: |
           pip install pandas playwright folium requests
-          playwright install --with-deps
+          playwright install
 
       - name: Run script
         env:
@@ -47,7 +36,8 @@ jobs:
       - name: Commit historique
         run: |
           git config --global user.name "bot"
-          git config --global user.email "bot@github.com"
+          git config --global user.email "bot@bot.com"
           git add historique_ids.csv
           git commit -m "update historique" || echo "no changes"
+          git pull --rebase
           git push
