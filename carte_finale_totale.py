@@ -70,10 +70,12 @@ async def scrape():
             a = await card.query_selector("a")
             href = await a.get_attribute("href") if a else ""
 
+            url = "https://www.costes-viager.com" + href if href else ""
+            
             rows.append({
                 "id": idx,
                 "html": html.strip(),
-                "url": "https://www.costes-viager.com" + href if href else ""
+                "url": url
             })
 
         await browser.close()
