@@ -27,11 +27,31 @@ def send_telegram(message):
         "text": message
     })
 
+
+def send_file(path):
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    url = f"https://api.telegram.org/bot{token}/sendDocument"
+
+    with open(path, "rb") as f:
+        requests.post(url, data={"chat_id": chat_id}, files={"document": f})
+
+
 # =========================
 # SCRAPING
 # =========================
 async def scrape():
+
     rows = []
+    seen_urls = set()
+
+    # historique
+    if os.path.exists(HISTORY_FILE):
+        old = pd.read_csv(HISTORY_FILE)
+        old_urls = set(old["url"])
+    else:
+        old_urls = set()
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -41,20 +61,37 @@ async def scrape():
         try:
             btn = await page.wait_for_selector("button:has-text('Accepter')", timeout=5000)
             await btn.click()
-        except TimeoutError:
+        except:
             pass
 
         await page.wait_for_selector("rc-card-annonce")
 
-        prev = 0
         while True:
             cards = await page.query_selector_all("rc-card-annonce")
-            cur = len(cards)
-            print(f"🧩 {cur} cartes")
 
-            if cur == prev:
-                break
-            prev = cur
+            print(f"🧩 {len(cards)} cartes analysées")
+
+            for card in cards:
+                a = await card.query_selector("a")
+                href = await a.get_attribute("href") if a else ""
+                url = "https://www.costes-viager.com" + href if href else ""
+
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+
+                # STOP dès qu'on voit une ancienne annonce
+                if url in old_urls:
+                    print("🛑 STOP (ancienne annonce)")
+                    await browser.close()
+                    return pd.DataFrame(rows)
+
+                html = await card.inner_html()
+
+                rows.append({
+                    "html": html.strip(),
+                    "url": url
+                })
 
             btn = await page.query_selector("button:has-text('Afficher plus de résultats')")
             if not btn:
@@ -63,34 +100,13 @@ async def scrape():
             await page.evaluate("(b) => b.click()", btn)
             await page.wait_for_timeout(800)
 
-        cards = await page.query_selector_all("rc-card-annonce")
-
-        for idx, card in enumerate(cards, start=1):
-            html = await card.inner_html()
-            a = await card.query_selector("a")
-            href = await a.get_attribute("href") if a else ""
-
-            url = "https://www.costes-viager.com" + href if href else ""
-            
-            rows.append({
-                "id": idx,
-                "html": html.strip(),
-                "url": url
-            })
-
         await browser.close()
-    df = pd.DataFrame(rows)
 
-    # 🔥 SUPPRESSION DES DOUBLONS
-    df = df.drop_duplicates(subset=["url"])
-    
-    print(f"🧹 Après dédoublonnage : {len(df)}")
-    
-    return df 
+    return pd.DataFrame(rows)
 
 
 # =========================
-# EXTRACTION (VERSION STABLE)
+# EXTRACTION
 # =========================
 def process(df):
 
@@ -116,18 +132,27 @@ def process(df):
     df["bouquet"] = df["txt"].apply(lambda x: extract_label(["Bouquet"], x))
     df["rente"] = df["txt"].apply(lambda x: extract_label(["Rente", "Mensual"], x))
 
-    df["age"] = df["txt"].str.extract(r"(\d{2})\s*ans").astype(float)
+    def extract_age(txt):
+        ages = re.findall(r"(\d{2})\s*ans", txt)
+        if not ages:
+            return None
+        return int(max(ages))
+
+    df["age"] = df["txt"].apply(extract_age)
     df["cp"] = df["txt"].str.extract(r"\((\d{5})\)")
 
     return df
+
 
 # =========================
 # FILTRES + GEO
 # =========================
 def enrich(df):
 
-    df = df[~df["txt"].str.contains("Femme", case=False, na=False)]
     df = df[~df["txt"].str.contains("vendu", case=False, na=False)]
+
+    # supprimer femme + couple
+    df = df[~df["txt"].str.contains(r"H\s*\d+\s*ans.*F\s*\d+\s*ans|F\s*\d+\s*ans.*H\s*\d+\s*ans", regex=True, na=False)]
 
     df = df[
         ((df["rente"].isna()) | (df["rente"] <= 500)) &
@@ -143,6 +168,7 @@ def enrich(df):
 
     return df.merge(geo, on="cp", how="left")
 
+
 # =========================
 # MAP
 # =========================
@@ -157,6 +183,7 @@ def create_map(df):
         ).add_to(m)
 
     m.save("carte.html")
+
 
 # =========================
 # MAIN
@@ -180,23 +207,29 @@ async def main():
         old_ids = set()
 
     new_df = df[~df["url"].isin(old_ids)]
+    new_df = new_df.drop_duplicates(subset=["url"])
 
-    # sauvegarde
-    df[["url"]].to_csv(HISTORY_FILE, index=False)
+    # sauvegarde historique
+    if os.path.exists(HISTORY_FILE):
+        combined = pd.concat([old, df[["url"]]]).drop_duplicates()
+    else:
+        combined = df[["url"]]
+
+    combined.to_csv(HISTORY_FILE, index=False)
 
     print(f"🆕 {len(new_df)} nouvelles annonces")
 
     if len(new_df) > 0:
         send_telegram(f"🔥 {len(new_df)} nouvelles annonces")
-
-        for _, row in new_df.head(10).iterrows():
-            send_telegram(f"{row['age']} ans\n{row['url']}")
     else:
         send_telegram("😴 Aucune nouvelle annonce")
 
+    # carte uniquement
     create_map(df)
+    send_file("carte.html")
 
     print("✅ FIN")
+
 
 # =========================
 if __name__ == "__main__":
