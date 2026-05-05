@@ -221,6 +221,28 @@ async def main():
 
     if len(new_df) > 0:
         send_telegram(f"🔥 {len(new_df)} nouvelles annonces")
+    
+        for i, row in new_df.iterrows():
+    
+            # limite à 3 annonces pour éviter spam
+            if i >= 3:
+                break
+    
+            message = "🔍 DEBUG ANNONCE\n"
+            message += f"🔗 {row['url']}\n\n"
+    
+            # HTML brut
+            if pd.notna(row.get("html")):
+                html_preview = row["html"][:1000].replace("\n", " ")
+                message += f"🧩 HTML:\n{html_preview}\n\n"
+    
+            # Texte nettoyé
+            if pd.notna(row.get("txt")):
+                txt_preview = row["txt"][:1000].replace("\n", " ")
+                message += f"🧾 TXT:\n{txt_preview}\n\n"
+    
+            send_telegram(message)
+    
     else:
         send_telegram("😴 Aucune nouvelle annonce")
 
