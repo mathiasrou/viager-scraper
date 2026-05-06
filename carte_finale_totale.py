@@ -75,7 +75,8 @@ async def scrape():
                 a = await card.query_selector("a")
                 href = await a.get_attribute("href") if a else ""
                 url = "https://www.costes-viager.com" + href if href else ""
-
+                await debug_card(card, url)
+                
                 if url in seen_urls:
                     continue
                 seen_urls.add(url)
@@ -98,12 +99,130 @@ async def scrape():
                 break
 
             await page.evaluate("(b) => b.click()", btn)
-            await page.wait_for_timeout(800)
+            await page.wait_for_selector("rc-card-annonce")
+            await page.wait_for_timeout(3000)
 
         await browser.close()
 
     return pd.DataFrame(rows)
 
+# =========================
+# DEBUG COMPLET
+# =========================
+async def debug_card(card, url):
+
+    debug = f"\n🔍 DEBUG ANNONCE\n🔗 {url}\n\n"
+
+    # ---------------------------------
+    # 1. HTML BRUT
+    # ---------------------------------
+    try:
+        html = await card.inner_html()
+
+        debug += "🧩 INNER_HTML:\n"
+        debug += html[:2000]
+        debug += "\n\n"
+
+    except Exception as e:
+        debug += f"❌ ERREUR INNER_HTML : {e}\n\n"
+
+    # ---------------------------------
+    # 2. INNER_TEXT
+    # ---------------------------------
+    try:
+        txt1 = await card.inner_text()
+
+        debug += "🧾 INNER_TEXT:\n"
+        debug += txt1[:2000]
+        debug += "\n\n"
+
+    except Exception as e:
+        debug += f"❌ ERREUR INNER_TEXT : {e}\n\n"
+
+    # ---------------------------------
+    # 3. evaluate(innerText)
+    # ---------------------------------
+    try:
+        txt2 = await card.evaluate("(el) => el.innerText")
+
+        debug += "🧠 EVALUATE innerText:\n"
+        debug += txt2[:2000]
+        debug += "\n\n"
+
+    except Exception as e:
+        debug += f"❌ ERREUR EVALUATE : {e}\n\n"
+
+    # ---------------------------------
+    # 4. textContent
+    # ---------------------------------
+    try:
+        txt3 = await card.evaluate("(el) => el.textContent")
+
+        debug += "📄 textContent:\n"
+        debug += txt3[:2000]
+        debug += "\n\n"
+
+    except Exception as e:
+        debug += f"❌ ERREUR textContent : {e}\n\n"
+
+    # ---------------------------------
+    # 5. Tous les textes descendants
+    # ---------------------------------
+    try:
+        all_texts = await card.evaluate("""
+        (el) => {
+            let arr = [];
+            el.querySelectorAll('*').forEach(x => {
+                if (x.innerText && x.innerText.trim().length > 0) {
+                    arr.push(x.innerText.trim());
+                }
+            });
+            return arr;
+        }
+        """)
+
+        debug += "🧱 TEXTES DESCENDANTS:\n"
+
+        for t in all_texts[:30]:
+            debug += f"---\n{t}\n"
+
+        debug += "\n\n"
+
+    except Exception as e:
+        debug += f"❌ ERREUR DESCENDANTS : {e}\n\n"
+
+    # ---------------------------------
+    # 6. Regex directes
+    # ---------------------------------
+    source = ""
+
+    try:
+        source += txt1 + "\n"
+    except:
+        pass
+
+    try:
+        source += txt2 + "\n"
+    except:
+        pass
+
+    try:
+        source += txt3 + "\n"
+    except:
+        pass
+
+    ages = re.findall(r"\d{2}\s*ans", source, re.I)
+    bouquet = re.findall(r"Bouquet.*?([\d\s]+)\s?€", source, re.I)
+    rente = re.findall(r"Rente.*?([\d\s]+)\s?€", source, re.I)
+    cp = re.findall(r"\b\d{5}\b", source)
+
+    debug += "🧪 REGEX:\n"
+    debug += f"AGES = {ages}\n"
+    debug += f"BOUQUET = {bouquet}\n"
+    debug += f"RENTE = {rente}\n"
+    debug += f"CP = {cp}\n"
+
+    send_telegram(debug[:4000])
 
 # =========================
 # EXTRACTION
