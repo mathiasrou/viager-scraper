@@ -235,46 +235,78 @@ def process(df):
     def clean(txt):
         if pd.isna(txt):
             return ""
-        return txt.replace("\u202f", " ").replace("\xa0", " ")
+
+        return (
+            txt
+            .replace("\u202f", " ")
+            .replace("\xa0", " ")
+        )
 
     df["txt"] = df["txt"].apply(clean)
 
-def extract_label(labels, txt):
+    # =========================
+    # EXTRACTION €
+    # =========================
+    def extract_label(labels, txt):
 
-    txt = txt.replace("\u202f", " ")
-    txt = txt.replace("\xa0", " ")
+        txt = txt.replace("\u202f", " ")
+        txt = txt.replace("\xa0", " ")
 
-    for label in labels:
+        for label in labels:
 
-        pattern = (
-            label +
-            r"\s*[A-Z]*\s*([\d\s]+)\s?€"
+            pattern = (
+                label +
+                r"\s*[A-Z]*\s*([\d\s]+)\s?€"
+            )
+
+            m = re.search(pattern, txt, re.I)
+
+            if m:
+
+                value = m.group(1)
+
+                digits = re.sub(r"[^\d]", "", value)
+
+                if digits:
+                    return int(digits)
+
+        return None
+
+    # =========================
+    # BOUQUET / RENTE
+    # =========================
+    df["bouquet"] = df["txt"].apply(
+        lambda x: extract_label(["Bouquet"], x)
+    )
+
+    df["rente"] = df["txt"].apply(
+        lambda x: extract_label(["Rente", "Mensual"], x)
+    )
+
+    # =========================
+    # AGE
+    # =========================
+    def extract_age(txt):
+
+        ages = re.findall(
+            r"(\d{2})\s*ans",
+            txt,
+            re.I
         )
 
-        m = re.search(pattern, txt, re.I)
-
-        if m:
-
-            value = m.group(1)
-
-            digits = re.sub(r"[^\d]", "", value)
-
-            if digits:
-                return int(digits)
-
-    return None
-
-    df["bouquet"] = df["txt"].apply(lambda x: extract_label(["Bouquet"], x))
-    df["rente"] = df["txt"].apply(lambda x: extract_label(["Rente", "Mensual"], x))
-
-    def extract_age(txt):
-        ages = re.findall(r"(\d{2})\s*ans", txt, re.I)
         if not ages:
             return None
+
         return int(max(ages))
 
     df["age"] = df["txt"].apply(extract_age)
-    df["cp"] = df["txt"].str.extract(r"\((\d{5})\)")
+
+    # =========================
+    # CODE POSTAL
+    # =========================
+    df["cp"] = df["txt"].str.extract(
+        r"\((\d{5})\)"
+    )
 
     return df
 
