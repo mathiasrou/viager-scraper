@@ -75,7 +75,7 @@ async def scrape():
                 a = await card.query_selector("a")
                 href = await a.get_attribute("href") if a else ""
                 url = "https://www.costes-viager.com" + href if href else ""
-                await debug_card(card, url)
+               # await debug_card(card, url)
                 
                 if url in seen_urls:
                     continue
@@ -88,9 +88,12 @@ async def scrape():
                     return pd.DataFrame(rows)
 
                 html = await card.inner_html()
-
+                
+                txt = await card.inner_text()
+                
                 rows.append({
                     "html": html.strip(),
+                    "txt": txt.strip(),
                     "url": url
                 })
 
@@ -234,25 +237,38 @@ def process(df):
             return ""
         return txt.replace("\u202f", " ").replace("\xa0", " ")
 
-    df["txt"] = df["html"].apply(clean)
+    df["txt"] = df["txt"].apply(clean)
 
-    def extract_label(labels, txt):
-        for label in labels:
-            m = re.search(label + r".*?([\d\s]+)\s?€", txt, re.I)
-            if m:
-                value = m.group(1)
-                if not value:
-                    continue
-                digits = re.sub(r"[^\d]", "", value)
-                if digits:
-                    return int(digits)
-        return None
+def extract_label(labels, txt):
+
+    txt = txt.replace("\u202f", " ")
+    txt = txt.replace("\xa0", " ")
+
+    for label in labels:
+
+        pattern = (
+            label +
+            r"\s*[A-Z]*\s*([\d\s]+)\s?€"
+        )
+
+        m = re.search(pattern, txt, re.I)
+
+        if m:
+
+            value = m.group(1)
+
+            digits = re.sub(r"[^\d]", "", value)
+
+            if digits:
+                return int(digits)
+
+    return None
 
     df["bouquet"] = df["txt"].apply(lambda x: extract_label(["Bouquet"], x))
     df["rente"] = df["txt"].apply(lambda x: extract_label(["Rente", "Mensual"], x))
 
     def extract_age(txt):
-        ages = re.findall(r"(\d{2})\s*ans", txt)
+        ages = re.findall(r"(\d{2})\s*ans", txt, re.I)
         if not ages:
             return None
         return int(max(ages))
