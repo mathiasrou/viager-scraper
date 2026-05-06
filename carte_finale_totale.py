@@ -54,60 +54,91 @@ async def scrape():
         old_urls = set()
 
     async with async_playwright() as p:
+
         browser = await p.chromium.launch(headless=True)
+
         page = await browser.new_page()
+
         await page.goto(URL, timeout=60000)
 
         try:
-            btn = await page.wait_for_selector("button:has-text('Accepter')", timeout=5000)
+            btn = await page.wait_for_selector(
+                "button:has-text('Accepter')",
+                timeout=5000
+            )
             await btn.click()
+
         except:
             pass
 
         await page.wait_for_selector("rc-card-annonce")
 
         while True:
-            cards = await page.query_selector_all("rc-card-annonce")
+
+            cards = await page.query_selector_all(
+                "rc-card-annonce"
+            )
 
             print(f"🧩 {len(cards)} cartes analysées")
 
             for card in cards:
+
                 a = await card.query_selector("a")
+
                 href = await a.get_attribute("href") if a else ""
-                url = "https://www.costes-viager.com" + href if href else ""
-               # await debug_card(card, url)
-                
+
+                url = (
+                    "https://www.costes-viager.com" + href
+                    if href else ""
+                )
+
+                # éviter doublons
                 if url in seen_urls:
                     continue
+
                 seen_urls.add(url)
 
-                # STOP dès qu'on voit une ancienne annonce
+                # STOP dès ancienne annonce
                 if url in old_urls:
-                    print("🛑 STOP (ancienne annonce)")
-                    await browser.close()
-                    return pd.DataFrame(rows)
 
+                    print("🛑 STOP (ancienne annonce)")
+
+                    await browser.close()
+
+                    return pd.DataFrame(
+                        rows,
+                        columns=["html", "txt", "url"]
+                    )
+
+                # extraction
                 html = await card.inner_html()
-                
+
                 txt = await card.inner_text()
-                
+
                 rows.append({
                     "html": html.strip(),
                     "txt": txt.strip(),
                     "url": url
                 })
 
-            btn = await page.query_selector("button:has-text('Afficher plus de résultats')")
+            # bouton afficher plus
+            btn = await page.query_selector(
+                "button:has-text('Afficher plus de résultats')"
+            )
+
             if not btn:
                 break
 
             await page.evaluate("(b) => b.click()", btn)
-            await page.wait_for_selector("rc-card-annonce")
+
             await page.wait_for_timeout(3000)
 
         await browser.close()
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+        rows,
+        columns=["html", "txt", "url"]
+    )
 
 # =========================
 # DEBUG COMPLET
