@@ -4,15 +4,20 @@ import re
 import folium
 import os
 import requests
-from playwright.async_api import async_playwright, TimeoutError
+
+from playwright.async_api import async_playwright
+
 
 URL = "https://www.costes-viager.com/acheter/annonces"
+
 HISTORY_FILE = "historique_ids.csv"
+
 
 # =========================
 # TELEGRAM
 # =========================
 def send_telegram(message):
+
     token = os.getenv("TELEGRAM_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -22,20 +27,32 @@ def send_telegram(message):
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
-    requests.post(url, data={
-        "chat_id": chat_id,
-        "text": message
-    })
+    requests.post(
+        url,
+        data={
+            "chat_id": chat_id,
+            "text": message
+        }
+    )
 
 
 def send_file(path):
+
     token = os.getenv("TELEGRAM_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        return
 
     url = f"https://api.telegram.org/bot{token}/sendDocument"
 
     with open(path, "rb") as f:
-        requests.post(url, data={"chat_id": chat_id}, files={"document": f})
+
+        requests.post(
+            url,
+            data={"chat_id": chat_id},
+            files={"document": f}
+        )
 
 
 # =========================
@@ -44,34 +61,49 @@ def send_file(path):
 async def scrape():
 
     rows = []
+
     seen_urls = set()
 
     # historique
     if os.path.exists(HISTORY_FILE):
+
         old = pd.read_csv(HISTORY_FILE)
+
         old_urls = set(old["url"])
+
     else:
+
         old_urls = set()
 
     async with async_playwright() as p:
 
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True
+        )
 
         page = await browser.new_page()
 
-        await page.goto(URL, timeout=60000)
+        await page.goto(
+            URL,
+            timeout=60000
+        )
 
+        # cookies
         try:
+
             btn = await page.wait_for_selector(
                 "button:has-text('Accepter')",
                 timeout=5000
             )
+
             await btn.click()
 
         except:
             pass
 
-        await page.wait_for_selector("rc-card-annonce")
+        await page.wait_for_selector(
+            "rc-card-annonce"
+        )
 
         while True:
 
@@ -83,43 +115,63 @@ async def scrape():
 
             for card in cards:
 
-                a = await card.query_selector("a")
+                try:
 
-                href = await a.get_attribute("href") if a else ""
+                    a = await card.query_selector("a")
 
-                url = (
-                    "https://www.costes-viager.com" + href
-                    if href else ""
-                )
-
-                # éviter doublons
-                if url in seen_urls:
-                    continue
-
-                seen_urls.add(url)
-
-                # STOP dès ancienne annonce
-                if url in old_urls:
-
-                    print("🛑 STOP (ancienne annonce)")
-
-                    await browser.close()
-
-                    return pd.DataFrame(
-                        rows,
-                        columns=["html", "txt", "url"]
+                    href = (
+                        await a.get_attribute("href")
+                        if a else ""
                     )
 
-                # extraction
-                html = await card.inner_html()
+                    url = (
+                        "https://www.costes-viager.com" + href
+                        if href else ""
+                    )
 
-                txt = await card.inner_text()
+                    if not url:
+                        continue
 
-                rows.append({
-                    "html": html.strip(),
-                    "txt": txt.strip(),
-                    "url": url
-                })
+                    # doublons
+                    if url in seen_urls:
+                        continue
+
+                    seen_urls.add(url)
+
+                    # stop historique
+                    if url in old_urls:
+
+                        print("🛑 STOP (ancienne annonce)")
+
+                        await browser.close()
+
+                        return pd.DataFrame(
+                            rows,
+                            columns=[
+                                "html",
+                                "txt",
+                                "url"
+                            ]
+                        )
+
+                    # extraction
+                    html = await card.inner_html()
+
+                    txt = await card.inner_text()
+
+                    rows.append({
+
+                        "html": html.strip(),
+
+                        "txt": txt.strip(),
+
+                        "url": url
+
+                    })
+
+                except Exception as e:
+
+                    print("❌ erreur annonce", e)
 
             # bouton afficher plus
             btn = await page.query_selector(
@@ -129,7 +181,10 @@ async def scrape():
             if not btn:
                 break
 
-            await page.evaluate("(b) => b.click()", btn)
+            await page.evaluate(
+                "(b) => b.click()",
+                btn
+            )
 
             await page.wait_for_timeout(3000)
 
@@ -137,133 +192,25 @@ async def scrape():
 
     return pd.DataFrame(
         rows,
-        columns=["html", "txt", "url"]
+        columns=[
+            "html",
+            "txt",
+            "url"
+        ]
     )
 
-# =========================
-# DEBUG COMPLET
-# =========================
-async def debug_card(card, url):
-
-    debug = f"\n🔍 DEBUG ANNONCE\n🔗 {url}\n\n"
-
-    # ---------------------------------
-    # 1. HTML BRUT
-    # ---------------------------------
-    try:
-        html = await card.inner_html()
-
-        debug += "🧩 INNER_HTML:\n"
-        debug += html[:2000]
-        debug += "\n\n"
-
-    except Exception as e:
-        debug += f"❌ ERREUR INNER_HTML : {e}\n\n"
-
-    # ---------------------------------
-    # 2. INNER_TEXT
-    # ---------------------------------
-    try:
-        txt1 = await card.inner_text()
-
-        debug += "🧾 INNER_TEXT:\n"
-        debug += txt1[:2000]
-        debug += "\n\n"
-
-    except Exception as e:
-        debug += f"❌ ERREUR INNER_TEXT : {e}\n\n"
-
-    # ---------------------------------
-    # 3. evaluate(innerText)
-    # ---------------------------------
-    try:
-        txt2 = await card.evaluate("(el) => el.innerText")
-
-        debug += "🧠 EVALUATE innerText:\n"
-        debug += txt2[:2000]
-        debug += "\n\n"
-
-    except Exception as e:
-        debug += f"❌ ERREUR EVALUATE : {e}\n\n"
-
-    # ---------------------------------
-    # 4. textContent
-    # ---------------------------------
-    try:
-        txt3 = await card.evaluate("(el) => el.textContent")
-
-        debug += "📄 textContent:\n"
-        debug += txt3[:2000]
-        debug += "\n\n"
-
-    except Exception as e:
-        debug += f"❌ ERREUR textContent : {e}\n\n"
-
-    # ---------------------------------
-    # 5. Tous les textes descendants
-    # ---------------------------------
-    try:
-        all_texts = await card.evaluate("""
-        (el) => {
-            let arr = [];
-            el.querySelectorAll('*').forEach(x => {
-                if (x.innerText && x.innerText.trim().length > 0) {
-                    arr.push(x.innerText.trim());
-                }
-            });
-            return arr;
-        }
-        """)
-
-        debug += "🧱 TEXTES DESCENDANTS:\n"
-
-        for t in all_texts[:30]:
-            debug += f"---\n{t}\n"
-
-        debug += "\n\n"
-
-    except Exception as e:
-        debug += f"❌ ERREUR DESCENDANTS : {e}\n\n"
-
-    # ---------------------------------
-    # 6. Regex directes
-    # ---------------------------------
-    source = ""
-
-    try:
-        source += txt1 + "\n"
-    except:
-        pass
-
-    try:
-        source += txt2 + "\n"
-    except:
-        pass
-
-    try:
-        source += txt3 + "\n"
-    except:
-        pass
-
-    ages = re.findall(r"\d{2}\s*ans", source, re.I)
-    bouquet = re.findall(r"Bouquet.*?([\d\s]+)\s?€", source, re.I)
-    rente = re.findall(r"Rente.*?([\d\s]+)\s?€", source, re.I)
-    cp = re.findall(r"\b\d{5}\b", source)
-
-    debug += "🧪 REGEX:\n"
-    debug += f"AGES = {ages}\n"
-    debug += f"BOUQUET = {bouquet}\n"
-    debug += f"RENTE = {rente}\n"
-    debug += f"CP = {cp}\n"
-
-    send_telegram(debug[:4000])
 
 # =========================
 # EXTRACTION
 # =========================
 def process(df):
 
+    if len(df) == 0:
+        return df
+
+    # nettoyage
     def clean(txt):
+
         if pd.isna(txt):
             return ""
 
@@ -271,6 +218,8 @@ def process(df):
             txt
             .replace("\u202f", " ")
             .replace("\xa0", " ")
+            .replace("\n", " ")
+            .strip()
         )
 
     df["txt"] = df["txt"].apply(clean)
@@ -278,40 +227,51 @@ def process(df):
     # =========================
     # EXTRACTION €
     # =========================
-    def extract_label(labels, txt):
+    def extract_money(label, txt):
 
-        txt = txt.replace("\u202f", " ")
-        txt = txt.replace("\xa0", " ")
+        txt = clean(txt)
 
-        for label in labels:
+        pattern = (
+            label +
+            r".*?([\d\s]+)\s?€"
+        )
 
-            pattern = (
-                label +
-                r"\s*[A-Z]*\s*([\d\s]+)\s?€"
-            )
+        m = re.search(
+            pattern,
+            txt,
+            re.I
+        )
 
-            m = re.search(pattern, txt, re.I)
+        if not m:
+            return None
 
-            if m:
+        value = m.group(1)
 
-                value = m.group(1)
+        digits = re.sub(
+            r"[^\d]",
+            "",
+            value
+        )
 
-                digits = re.sub(r"[^\d]", "", value)
-
-                if digits:
-                    return int(digits)
+        if digits:
+            return int(digits)
 
         return None
 
-    # =========================
-    # BOUQUET / RENTE
-    # =========================
+    # bouquet
     df["bouquet"] = df["txt"].apply(
-        lambda x: extract_label(["Bouquet"], x)
+        lambda x: extract_money(
+            "Bouquet",
+            x
+        )
     )
 
+    # rente
     df["rente"] = df["txt"].apply(
-        lambda x: extract_label(["Rente", "Mensual"], x)
+        lambda x: extract_money(
+            "Rente",
+            x
+        )
     )
 
     # =========================
@@ -328,12 +288,16 @@ def process(df):
         if not ages:
             return None
 
-        return int(max(ages))
+        ages = [int(x) for x in ages]
 
-    df["age"] = df["txt"].apply(extract_age)
+        return max(ages)
+
+    df["age"] = df["txt"].apply(
+        extract_age
+    )
 
     # =========================
-    # CODE POSTAL
+    # CP
     # =========================
     df["cp"] = df["txt"].str.extract(
         r"\((\d{5})\)"
@@ -343,41 +307,123 @@ def process(df):
 
 
 # =========================
-# FILTRES + GEO
+# DEBUG
 # =========================
-def enrich(df):
+def send_debug(row):
 
-    df = df[~df["txt"].str.contains("vendu", case=False, na=False)]
+    txt = row["txt"]
 
-    # supprimer femme + couple
-    df = df[~df["txt"].str.contains(r"H\s*\d+\s*ans.*F\s*\d+\s*ans|F\s*\d+\s*ans.*H\s*\d+\s*ans", regex=True, na=False)]
+    age_matches = re.findall(
+        r"(\d{2})\s*ans",
+        txt,
+        re.I
+    )
 
-    df = df[
-        ((df["rente"].isna()) | (df["rente"] <= 500)) &
-        ((df["bouquet"].isna()) | (df["bouquet"] <= 150000))
-    ]
+    bouquet_match = re.search(
+        r"Bouquet.*?([\d\s]+)\s?€",
+        txt,
+        re.I
+    )
 
-    geo = pd.read_csv("base-officielle-codes-postaux.csv")
-    geo = geo[["code_postal", "latitude", "longitude"]]
-    geo.columns = ["cp", "lat", "lon"]
+    rente_match = re.search(
+        r"Rente.*?([\d\s]+)\s?€",
+        txt,
+        re.I
+    )
 
-    df["cp"] = df["cp"].astype(str)
-    geo["cp"] = geo["cp"].astype(str)
+    cp_match = re.search(
+        r"\((\d{5})\)",
+        txt
+    )
 
-    return df.merge(geo, on="cp", how="left")
+    debug = ""
+
+    debug += "🔍 DEBUG EXTRACTION\n\n"
+
+    debug += f"🔗 URL :\n{row['url']}\n\n"
+
+    debug += "🧾 TEXTE SOURCE :\n"
+    debug += txt[:3000]
+    debug += "\n\n"
+
+    debug += "====================\n"
+    debug += "🎯 RESULTATS EXTRAITS\n"
+    debug += "====================\n\n"
+
+    debug += f"👴 AGE FINAL = {row.get('age')}\n"
+    debug += f"➡️ MATCHES AGE = {age_matches}\n\n"
+
+    debug += f"💰 BOUQUET FINAL = {row.get('bouquet')}\n"
+
+    if bouquet_match:
+        debug += f"➡️ MATCH BOUQUET = {bouquet_match.group(0)}\n\n"
+    else:
+        debug += "➡️ MATCH BOUQUET = AUCUN\n\n"
+
+    debug += f"📆 RENTE FINAL = {row.get('rente')}\n"
+
+    if rente_match:
+        debug += f"➡️ MATCH RENTE = {rente_match.group(0)}\n\n"
+    else:
+        debug += "➡️ MATCH RENTE = AUCUN\n\n"
+
+    debug += f"📍 CP FINAL = {row.get('cp')}\n"
+
+    if cp_match:
+        debug += f"➡️ MATCH CP = {cp_match.group(0)}\n\n"
+    else:
+        debug += "➡️ MATCH CP = AUCUN\n\n"
+
+    send_telegram(debug[:4000])
 
 
 # =========================
 # MAP
 # =========================
-def create_map(df):
-    m = folium.Map(location=[46.5, 2.5], zoom_start=6)
+def create_map(valid_df, rejected_df):
 
-    for _, row in df.dropna(subset=["lat"]).iterrows():
+    m = folium.Map(
+        location=[46.5, 2.5],
+        zoom_start=6
+    )
+
+    # =========================
+    # VERT = OK
+    # =========================
+    for _, row in valid_df.dropna(
+        subset=["lat"]
+    ).iterrows():
+
+        popup = (
+            f"OK<br>"
+            f"{row.get('age')} ans<br>"
+            f"Bouquet : {row.get('bouquet')} €<br>"
+            f"Rente : {row.get('rente')} €/mois<br>"
+            f"<a href='{row['url']}' target='_blank'>Annonce</a>"
+        )
+
         folium.Marker(
             [row["lat"], row["lon"]],
-            popup=row["url"],
+            popup=popup,
             icon=folium.Icon(color="green")
+        ).add_to(m)
+
+    # =========================
+    # ROUGE = REJETE
+    # =========================
+    for _, row in rejected_df.dropna(
+        subset=["lat"]
+    ).iterrows():
+
+        popup = (
+            f"REJETE<br>"
+            f"{row['url']}"
+        )
+
+        folium.Marker(
+            [row["lat"], row["lon"]],
+            popup=popup,
+            icon=folium.Icon(color="red")
         ).add_to(m)
 
     m.save("carte.html")
@@ -389,68 +435,199 @@ def create_map(df):
 async def main():
 
     print("🚀 SCRAPING...")
+
     df = await scrape()
 
     print("📊 EXTRACTION...")
+
     df = process(df)
 
-    print("🧠 FILTRES...")
-    df = enrich(df)
+    if len(df) == 0:
 
-    # historique
+        send_telegram(
+            "😴 Aucune nouvelle annonce"
+        )
+
+        return
+
+    # DEBUG PREMIERE ANNONCE
+    send_debug(df.iloc[0])
+
+    # =========================
+    # FILTRES
+    # =========================
+
+    # vendu
+    filtre_vendu = df["txt"].str.contains(
+        "vendu",
+        case=False,
+        na=False
+    )
+
+    # femme seule
+    filtre_femme = df["txt"].str.contains(
+        r"Femme\s*,?\s*\d+\s*ans",
+        regex=True,
+        case=False,
+        na=False
+    )
+
+    # couple
+    filtre_couple = df["txt"].str.contains(
+        r"Femme.*Homme|Homme.*Femme",
+        regex=True,
+        case=False,
+        na=False
+    )
+
+    # rente
+    filtre_rente = (
+        df["rente"].fillna(0) > 500
+    )
+
+    # bouquet
+    filtre_bouquet = (
+        df["bouquet"].fillna(0) > 150000
+    )
+
+    rejected = df[
+        filtre_vendu
+        |
+        filtre_femme
+        |
+        filtre_couple
+        |
+        filtre_rente
+        |
+        filtre_bouquet
+    ].copy()
+
+    valid = df[
+        ~df["url"].isin(
+            rejected["url"]
+        )
+    ].copy()
+
+    print(f"✅ conservées : {len(valid)}")
+
+    print(f"❌ rejetées : {len(rejected)}")
+
+    # =========================
+    # GEO
+    # =========================
+    geo = pd.read_csv(
+        "base-officielle-codes-postaux.csv"
+    )
+
+    geo = geo[[
+        "code_postal",
+        "latitude",
+        "longitude"
+    ]]
+
+    geo.columns = [
+        "cp",
+        "lat",
+        "lon"
+    ]
+
+    geo["cp"] = geo["cp"].astype(str)
+
+    valid["cp"] = valid["cp"].astype(str)
+
+    rejected["cp"] = rejected["cp"].astype(str)
+
+    valid = valid.merge(
+        geo,
+        on="cp",
+        how="left"
+    )
+
+    rejected = rejected.merge(
+        geo,
+        on="cp",
+        how="left"
+    )
+
+    # =========================
+    # HISTORIQUE
+    # =========================
     if os.path.exists(HISTORY_FILE):
+
         old = pd.read_csv(HISTORY_FILE)
-        old_ids = set(old["url"])
+
+        old_urls = set(old["url"])
+
     else:
-        old_ids = set()
 
-    new_df = df[~df["url"].isin(old_ids)]
-    new_df = new_df.drop_duplicates(subset=["url"])
+        old_urls = set()
 
-    # sauvegarde historique
-    if os.path.exists(HISTORY_FILE):
-        combined = pd.concat([old, df[["url"]]]).drop_duplicates()
+    new_valid = valid[
+        ~valid["url"].isin(old_urls)
+    ]
+
+    # sauvegarde
+    combined = pd.concat([
+        pd.DataFrame({
+            "url": list(old_urls)
+        }),
+        valid[["url"]]
+    ]).drop_duplicates()
+
+    combined.to_csv(
+        HISTORY_FILE,
+        index=False
+    )
+
+    # =========================
+    # TELEGRAM
+    # =========================
+    if len(new_valid) > 0:
+
+        send_telegram(
+            f"🔥 {len(new_valid)} nouvelles annonces"
+        )
+
+        for _, row in new_valid.iterrows():
+
+            msg = ""
+
+            msg += "🏠 VIAGER\n\n"
+
+            msg += f"👴 Age : {row.get('age')}\n"
+
+            msg += f"💰 Bouquet : {row.get('bouquet')} €\n"
+
+            msg += f"📆 Rente : {row.get('rente')} €/mois\n"
+
+            msg += f"📍 CP : {row.get('cp')}\n\n"
+
+            msg += f"🔗 {row['url']}"
+
+            send_telegram(msg)
+
     else:
-        combined = df[["url"]]
 
-    combined.to_csv(HISTORY_FILE, index=False)
+        send_telegram(
+            "😴 Aucune nouvelle annonce"
+        )
 
-    print(f"🆕 {len(new_df)} nouvelles annonces")
+    # =========================
+    # CARTE
+    # =========================
+    create_map(
+        valid,
+        rejected
+    )
 
-    if len(new_df) > 0:
-        send_telegram(f"🔥 {len(new_df)} nouvelles annonces")
-    
-        for i, row in new_df.iterrows():
-    
-            # limite à 3 annonces pour éviter spam
-            if i >= 3:
-                break
-    
-            message = "🔍 DEBUG ANNONCE\n"
-            message += f"🔗 {row['url']}\n\n"
-    
-            # HTML brut
-            if pd.notna(row.get("html")):
-                html_preview = row["html"][:1000].replace("\n", " ")
-                message += f"🧩 HTML:\n{html_preview}\n\n"
-    
-            # Texte nettoyé
-            if pd.notna(row.get("txt")):
-                txt_preview = row["txt"][:1000].replace("\n", " ")
-                message += f"🧾 TXT:\n{txt_preview}\n\n"
-    
-            send_telegram(message)
-    
-    else:
-        send_telegram("😴 Aucune nouvelle annonce")
-
-    # carte uniquement
-    create_map(df)
     send_file("carte.html")
 
     print("✅ FIN")
 
 
 # =========================
+# RUN
+# =========================
 if __name__ == "__main__":
+
     asyncio.run(main())
