@@ -13,9 +13,9 @@ URL = "https://www.costes-viager.com/acheter/annonces"
 HISTORY_FILE = "historique_ids.csv"
 
 
-# =========================
+# =========================================================
 # TELEGRAM
-# =========================
+# =========================================================
 def send_telegram(message):
 
     token = os.getenv("TELEGRAM_TOKEN")
@@ -55,9 +55,9 @@ def send_file(path):
         )
 
 
-# =========================
+# =========================================================
 # SCRAPING
-# =========================
+# =========================================================
 async def scrape():
 
     rows = []
@@ -154,7 +154,6 @@ async def scrape():
                             ]
                         )
 
-                    # extraction
                     html = await card.inner_html()
 
                     txt = await card.inner_text()
@@ -200,36 +199,37 @@ async def scrape():
     )
 
 
-# =========================
+# =========================================================
+# NETTOYAGE
+# =========================================================
+def clean(txt):
+
+    if pd.isna(txt):
+        return ""
+
+    return (
+        txt
+        .replace("\u202f", " ")
+        .replace("\xa0", " ")
+        .replace("\n", " ")
+        .strip()
+    )
+
+
+# =========================================================
 # EXTRACTION
-# =========================
+# =========================================================
 def process(df):
 
     if len(df) == 0:
         return df
 
-    # nettoyage
-    def clean(txt):
-
-        if pd.isna(txt):
-            return ""
-
-        return (
-            txt
-            .replace("\u202f", " ")
-            .replace("\xa0", " ")
-            .replace("\n", " ")
-            .strip()
-        )
-
     df["txt"] = df["txt"].apply(clean)
 
     # =========================
-    # EXTRACTION €
+    # EXTRACTION ARGENT
     # =========================
     def extract_money(label, txt):
-
-        txt = clean(txt)
 
         pattern = (
             label +
@@ -306,9 +306,9 @@ def process(df):
     return df
 
 
-# =========================
+# =========================================================
 # DEBUG
-# =========================
+# =========================================================
 def send_debug(row):
 
     txt = row["txt"]
@@ -377,9 +377,9 @@ def send_debug(row):
     send_telegram(debug[:4000])
 
 
-# =========================
-# MAP
-# =========================
+# =========================================================
+# CARTE
+# =========================================================
 def create_map(valid_df, rejected_df):
 
     m = folium.Map(
@@ -387,51 +387,114 @@ def create_map(valid_df, rejected_df):
         zoom_start=6
     )
 
-    # =========================
-    # VERT = OK
-    # =========================
+    # =====================================================
+    # VALIDES
+    # =====================================================
     for _, row in valid_df.dropna(
         subset=["lat"]
     ).iterrows():
 
+        txt = str(
+            row.get("txt", "")
+        ).lower()
+
+        age = row.get("age")
+
+        color = "green"
+
+        if pd.notna(age):
+
+            age = int(age)
+
+            if age < 72:
+                color = "black"
+
+            elif age < 78:
+                color = "green"
+
+            elif age < 84:
+                color = "orange"
+
+            else:
+                color = "red"
+
+        icon_name = "home"
+
+        if "appartement" in txt:
+            icon_name = "building"
+
+        elif "maison" in txt:
+            icon_name = "home"
+
         popup = (
-            f"OK<br>"
-            f"{row.get('age')} ans<br>"
-            f"Bouquet : {row.get('bouquet')} €<br>"
-            f"Rente : {row.get('rente')} €/mois<br>"
-            f"<a href='{row['url']}' target='_blank'>Annonce</a>"
+            "<b>✅ ANNONCE VALIDEE</b><br><br>"
+            f"👴 Age : {row.get('age')} ans<br>"
+            f"💰 Bouquet : {row.get('bouquet')} €<br>"
+            f"📆 Rente : {row.get('rente')} €/mois<br>"
+            f"📍 CP : {row.get('cp')}<br><br>"
+            f"<a href='{row['url']}' target='_blank'>"
+            "Voir annonce"
+            "</a>"
         )
 
         folium.Marker(
+
             [row["lat"], row["lon"]],
-            popup=popup,
-            icon=folium.Icon(color="green")
+
+            popup=folium.Popup(
+                popup,
+                max_width=300
+            ),
+
+            icon=folium.Icon(
+                color=color,
+                icon=icon_name,
+                prefix="fa"
+            )
+
         ).add_to(m)
 
-    # =========================
-    # ROUGE = REJETE
-    # =========================
+    # =====================================================
+    # REJETEES
+    # =====================================================
     for _, row in rejected_df.dropna(
         subset=["lat"]
     ).iterrows():
 
         popup = (
-            f"REJETE<br>"
-            f"{row['url']}"
+            "<b>❌ REJETEE</b><br><br>"
+            f"👴 Age : {row.get('age')} ans<br>"
+            f"💰 Bouquet : {row.get('bouquet')} €<br>"
+            f"📆 Rente : {row.get('rente')} €/mois<br>"
+            f"📍 CP : {row.get('cp')}<br><br>"
+            f"<a href='{row['url']}' target='_blank'>"
+            "Voir annonce"
+            "</a>"
         )
 
         folium.Marker(
+
             [row["lat"], row["lon"]],
-            popup=popup,
-            icon=folium.Icon(color="red")
+
+            popup=folium.Popup(
+                popup,
+                max_width=300
+            ),
+
+            icon=folium.Icon(
+                color="lightgray",
+                icon="remove",
+                prefix="fa"
+            )
+
         ).add_to(m)
 
     m.save("carte.html")
 
 
-# =========================
+# =========================================================
 # MAIN
-# =========================
+# =========================================================
 async def main():
 
     print("🚀 SCRAPING...")
@@ -450,21 +513,19 @@ async def main():
 
         return
 
-    # DEBUG PREMIERE ANNONCE
+    # DEBUG
     send_debug(df.iloc[0])
 
-    # =========================
+    # =====================================================
     # FILTRES
-    # =========================
+    # =====================================================
 
-    # vendu
     filtre_vendu = df["txt"].str.contains(
         "vendu",
         case=False,
         na=False
     )
 
-    # femme seule
     filtre_femme = df["txt"].str.contains(
         r"Femme\s*,?\s*\d+\s*ans",
         regex=True,
@@ -472,7 +533,6 @@ async def main():
         na=False
     )
 
-    # couple
     filtre_couple = df["txt"].str.contains(
         r"Femme.*Homme|Homme.*Femme",
         regex=True,
@@ -480,12 +540,10 @@ async def main():
         na=False
     )
 
-    # rente
     filtre_rente = (
         df["rente"].fillna(0) > 500
     )
 
-    # bouquet
     filtre_bouquet = (
         df["bouquet"].fillna(0) > 150000
     )
@@ -512,9 +570,9 @@ async def main():
 
     print(f"❌ rejetées : {len(rejected)}")
 
-    # =========================
+    # =====================================================
     # GEO
-    # =========================
+    # =====================================================
     geo = pd.read_csv(
         "base-officielle-codes-postaux.csv"
     )
@@ -549,9 +607,9 @@ async def main():
         how="left"
     )
 
-    # =========================
+    # =====================================================
     # HISTORIQUE
-    # =========================
+    # =====================================================
     if os.path.exists(HISTORY_FILE):
 
         old = pd.read_csv(HISTORY_FILE)
@@ -566,7 +624,6 @@ async def main():
         ~valid["url"].isin(old_urls)
     ]
 
-    # sauvegarde
     combined = pd.concat([
         pd.DataFrame({
             "url": list(old_urls)
@@ -579,9 +636,9 @@ async def main():
         index=False
     )
 
-    # =========================
+    # =====================================================
     # TELEGRAM
-    # =========================
+    # =====================================================
     if len(new_valid) > 0:
 
         send_telegram(
@@ -612,9 +669,9 @@ async def main():
             "😴 Aucune nouvelle annonce"
         )
 
-    # =========================
+    # =====================================================
     # CARTE
-    # =========================
+    # =====================================================
     create_map(
         valid,
         rejected
@@ -625,9 +682,9 @@ async def main():
     print("✅ FIN")
 
 
-# =========================
+# =========================================================
 # RUN
-# =========================
+# =========================================================
 if __name__ == "__main__":
 
     asyncio.run(main())
