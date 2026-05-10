@@ -39,20 +39,28 @@ def send_telegram(message):
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
     if not token or not chat_id:
-        print("❌ TOKEN TELEGRAM MANQUANT")
+
+        print("❌ TELEGRAM NON CONFIGURE")
+
         return
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-
     try:
+
+        url = (
+            f"https://api.telegram.org/"
+            f"bot{token}/sendMessage"
+        )
 
         requests.post(
 
             url,
 
             data={
+
                 "chat_id": chat_id,
-                "text": message[:4000]
+
+                "text": str(message)[:4000]
+
             },
 
             timeout=30
@@ -61,7 +69,9 @@ def send_telegram(message):
 
     except Exception as e:
 
-        print("❌ TELEGRAM", e)
+        print("❌ ERREUR TELEGRAM")
+
+        print(e)
 
 
 def send_file(path):
@@ -72,9 +82,12 @@ def send_file(path):
     if not token or not chat_id:
         return
 
-    url = f"https://api.telegram.org/bot{token}/sendDocument"
-
     try:
+
+        url = (
+            f"https://api.telegram.org/"
+            f"bot{token}/sendDocument"
+        )
 
         with open(path, "rb") as f:
 
@@ -82,9 +95,17 @@ def send_file(path):
 
                 url,
 
-                data={"chat_id": chat_id},
+                data={
 
-                files={"document": f},
+                    "chat_id": chat_id
+
+                },
+
+                files={
+
+                    "document": f
+
+                },
 
                 timeout=60
 
@@ -92,7 +113,9 @@ def send_file(path):
 
     except Exception as e:
 
-        print("❌ SEND FILE", e)
+        print("❌ SEND FILE")
+
+        print(e)
 
 
 # =========================================================
@@ -106,10 +129,10 @@ def clean(txt):
 
     txt = str(txt)
 
-    txt = txt.replace("\u202f", " ")
-    txt = txt.replace("\xa0", " ")
     txt = txt.replace("\n", " ")
     txt = txt.replace("\t", " ")
+    txt = txt.replace("\xa0", " ")
+    txt = txt.replace("\u202f", " ")
 
     txt = re.sub(
         r"\s+",
@@ -332,7 +355,7 @@ def extract_status(txt):
 
 
 # =========================================================
-# DATE
+# DATES
 # =========================================================
 
 def compute_days_remaining(date_str):
@@ -431,19 +454,76 @@ async def scrape():
 
     seen = set()
 
+    # =====================================================
+    # HISTORIQUE
+    # =====================================================
+
+    print("")
+    print("=" * 60)
+    print("📦 VERIFICATION HISTORIQUE")
+    print("=" * 60)
+
     if os.path.exists(HISTORY_FILE):
 
-        old = pd.read_csv(HISTORY_FILE)
+        print(f"✅ FICHIER TROUVE : {HISTORY_FILE}")
 
-        old_urls = set(
-            old["url"]
-            .astype(str)
-            .tolist()
-        )
+        try:
+
+            old = pd.read_csv(
+
+                HISTORY_FILE,
+
+                sep=";",
+
+                encoding="utf-8-sig",
+
+                low_memory=False
+
+            )
+
+            print("✅ CSV HISTORIQUE LU")
+
+            print(f"📦 LIGNES = {len(old)}")
+
+            print(f"📦 COLONNES = {list(old.columns)}")
+
+            if "url" not in old.columns:
+
+                print("❌ COLONNE URL ABSENTE")
+
+                old_urls = set()
+
+            else:
+
+                old_urls = set(
+
+                    old["url"]
+                    .astype(str)
+                    .tolist()
+
+                )
+
+                print(f"✅ URLS = {len(old_urls)}")
+
+        except Exception as e:
+
+            print("❌ ERREUR LECTURE HISTORIQUE")
+
+            print(e)
+
+            traceback.print_exc()
+
+            old_urls = set()
 
     else:
 
+        print("🆕 AUCUN HISTORIQUE")
+
         old_urls = set()
+
+    # =====================================================
+    # PLAYWRIGHT
+    # =====================================================
 
     async with async_playwright() as p:
 
@@ -491,9 +571,9 @@ async def scrape():
                     if len(txt) < 20:
                         continue
 
-                    links = await article.query_selector_all("a")
-
                     annonce_url = None
+
+                    links = await article.query_selector_all("a")
 
                     for link in links:
 
@@ -517,6 +597,10 @@ async def scrape():
 
                     if annonce_url is None:
                         continue
+
+                    # =========================================
+                    # DOUBLONS
+                    # =========================================
 
                     if annonce_url in seen:
                         continue
@@ -573,7 +657,13 @@ async def scrape():
 
                 except Exception as e:
 
-                    print("❌ ARTICLE", e)
+                    print("❌ ARTICLE")
+
+                    print(e)
+
+            # =============================================
+            # SUIVANT
+            # =============================================
 
             try:
 
@@ -581,14 +671,23 @@ async def scrape():
                     "text=Suivant"
                 )
 
-                if await next_btn.count() == 0:
+                count_next = await next_btn.count()
+
+                print(f"➡️ BOUTON SUIVANT = {count_next}")
+
+                if count_next == 0:
                     break
 
                 await next_btn.first.click()
 
                 await page.wait_for_timeout(5000)
 
-            except:
+            except Exception as e:
+
+                print("❌ ERREUR SUIVANT")
+
+                print(e)
+
                 break
 
             page_num += 1
@@ -600,12 +699,27 @@ async def scrape():
 
     df = pd.DataFrame(rows)
 
+    print("")
+    print("=" * 60)
+    print("📊 DATAFRAME SCRAPE")
+    print("=" * 60)
+
+    print(df.head())
+
+    print(f"📦 TOTAL = {len(df)}")
+
     if len(df) > 0:
+
+        before = len(df)
 
         df = df.drop_duplicates(
             subset=["url"],
             keep="first"
         )
+
+        after = len(df)
+
+        print(f"🧹 DOUBLONS SUPPRIMES = {before - after}")
 
     return df
 
@@ -616,7 +730,22 @@ async def scrape():
 
 def geolocate(df):
 
-    geo = pd.read_csv(CP_FILE)
+    print("")
+    print("=" * 60)
+    print("🌍 GEOLOCALISATION")
+    print("=" * 60)
+
+    geo = pd.read_csv(
+
+        CP_FILE,
+
+        low_memory=False
+
+    )
+
+    print(f"📦 GEO LIGNES = {len(geo)}")
+
+    print(f"📦 GEO COLONNES = {list(geo.columns)}")
 
     geo = geo[[
 
@@ -641,10 +770,14 @@ def geolocate(df):
     df = df.merge(
 
         geo,
+
         on="cp",
+
         how="left"
 
     )
+
+    print("✅ GEO OK")
 
     return df
 
@@ -655,6 +788,11 @@ def geolocate(df):
 
 def create_map(df):
 
+    print("")
+    print("=" * 60)
+    print("🗺️ CREATION CARTE")
+    print("=" * 60)
+
     active_df = df[
         df["status"] != "terminee"
     ].copy()
@@ -663,6 +801,8 @@ def create_map(df):
         subset=["url"],
         keep="first"
     )
+
+    print(f"📦 ACTIFS = {len(active_df)}")
 
     m = folium.Map(
 
@@ -684,10 +824,6 @@ def create_map(df):
             lat = float(row["lat"])
             lon = float(row["lon"])
 
-            # =========================================
-            # OFFSET
-            # =========================================
-
             pos_key = f"{lat}_{lon}"
 
             if pos_key not in used_positions:
@@ -703,17 +839,9 @@ def create_map(df):
             lat += offset * 0.0007
             lon += offset * 0.0007
 
-            # =========================================
-            # COLOR
-            # =========================================
-
             color = marker_color(
                 row["prix"]
             )
-
-            # =========================================
-            # ICON
-            # =========================================
 
             center_symbol = "🏠"
 
@@ -736,10 +864,6 @@ def create_map(df):
             if symb is not None:
                 center_symbol = symb
 
-            # =========================================
-            # BOTTOM
-            # =========================================
-
             bottom_text = ""
 
             if row["status"] == "en_cours":
@@ -753,10 +877,6 @@ def create_map(df):
                 bottom_text = short_date(
                     row["date_vente"]
                 )
-
-            # =========================================
-            # POPUP
-            # =========================================
 
             popup = f"""
             <b>{row['type']}</b><br><br>
@@ -784,10 +904,6 @@ def create_map(df):
             Voir annonce
             </a>
             """
-
-            # =========================================
-            # HTML
-            # =========================================
 
             html = f"""
             <div style="
@@ -847,9 +963,13 @@ def create_map(df):
 
         except Exception as e:
 
-            print("❌ MAP", e)
+            print("❌ MARKER")
+
+            print(e)
 
     m.save("carte_encheres_immo.html")
+
+    print("✅ CARTE SAUVEGARDEE")
 
 
 # =========================================================
@@ -860,16 +980,26 @@ async def main():
 
     try:
 
-        print("🚀 SCRAPING...")
+        print("")
+        print("=" * 60)
+        print("🚀 DEMARRAGE")
+        print("=" * 60)
 
         df = await scrape()
+
+        print("")
+        print("=" * 60)
+        print("📊 CHECK DATAFRAME")
+        print("=" * 60)
+
+        print(type(df))
 
         print(f"📦 TOTAL = {len(df)}")
 
         if len(df) == 0:
 
             send_telegram(
-                "😴 Aucune annonce"
+                "😴 AUCUNE ANNONCE"
             )
 
             return
@@ -884,37 +1014,105 @@ async def main():
         # SAVE HISTORIQUE
         # =================================================
 
-        if os.path.exists(HISTORY_FILE):
+        print("")
+        print("=" * 60)
+        print("💾 SAVE HISTORIQUE")
+        print("=" * 60)
 
-            old = pd.read_csv(HISTORY_FILE)
+        try:
 
-            df = pd.concat(
-                [old, df],
-                ignore_index=True
+            if os.path.exists(HISTORY_FILE):
+
+                try:
+
+                    old_save = pd.read_csv(
+
+                        HISTORY_FILE,
+
+                        sep=";",
+
+                        encoding="utf-8-sig",
+
+                        low_memory=False
+
+                    )
+
+                    print(f"📦 ANCIEN = {len(old_save)}")
+
+                    df = pd.concat(
+
+                        [old_save, df],
+
+                        ignore_index=True
+
+                    )
+
+                except Exception as e:
+
+                    print("❌ ERREUR RELECTURE")
+
+                    print(e)
+
+            before = len(df)
+
+            df = df.drop_duplicates(
+
+                subset=["url"],
+
+                keep="first"
+
             )
 
-        df = df.drop_duplicates(
-            subset=["url"],
-            keep="first"
-        )
+            after = len(df)
 
-        df.to_csv(
-            HISTORY_FILE,
-            index=False
-        )
+            print(f"🧹 DOUBLONS = {before - after}")
+
+            print(f"📦 FINAL = {len(df)}")
+
+            print(f"📦 COLONNES = {list(df.columns)}")
+
+            if "url" not in df.columns:
+
+                raise Exception(
+                    "COLONNE URL ABSENTE"
+                )
+
+            df.to_csv(
+
+                HISTORY_FILE,
+
+                sep=";",
+
+                index=False,
+
+                encoding="utf-8-sig"
+
+            )
+
+            print("✅ HISTORIQUE SAUVEGARDE")
+
+        except Exception as e:
+
+            print("❌ SAVE HISTORIQUE")
+
+            print(e)
+
+            traceback.print_exc()
 
         # =================================================
-        # NOUVELLES ANNONCES
+        # NEW
         # =================================================
 
         new_df = df[
             df["is_new"] == True
         ].copy()
 
+        print(f"🔥 NOUVELLES = {len(new_df)}")
+
         if len(new_df) > 0:
 
             send_telegram(
-                f"🔥 {len(new_df)} nouvelles annonces Enchères Immo"
+                f"🔥 {len(new_df)} nouvelles annonces Encheres Immo"
             )
 
             for _, row in new_df.iterrows():
@@ -944,7 +1142,7 @@ async def main():
         else:
 
             send_telegram(
-                "😴 Aucune nouvelle annonce Enchères Immo"
+                "😴 Aucune nouvelle annonce Encheres Immo"
             )
 
         # =================================================
@@ -957,11 +1155,19 @@ async def main():
             "carte_encheres_immo.html"
         )
 
+        print("")
+        print("=" * 60)
         print("✅ FIN")
+        print("=" * 60)
 
     except Exception as e:
 
-        print("❌ MAIN", e)
+        print("")
+        print("=" * 60)
+        print("❌ ERREUR MAIN")
+        print("=" * 60)
+
+        print(e)
 
         traceback.print_exc()
 
