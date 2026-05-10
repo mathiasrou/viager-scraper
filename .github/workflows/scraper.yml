@@ -13,31 +13,88 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      # =====================================================
+      # CLONE REPO
+      # =====================================================
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # =====================================================
+      # PYTHON
+      # =====================================================
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: "3.12"
 
-      - run: |
+      # =====================================================
+      # DEPENDANCES LINUX PLAYWRIGHT
+      # =====================================================
+
+      - name: Install Linux dependencies
+        run: |
           sudo apt-get update
-          sudo apt-get install -y libnss3 libatk-bridge2.0-0 libgtk-3-0 libx11-xcb1 libxcb-dri3-0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2t64
+          sudo apt-get install -y \
+            libnss3 \
+            libatk-bridge2.0-0 \
+            libgtk-3-0 \
+            libx11-xcb1 \
+            libxcb-dri3-0 \
+            libxcomposite1 \
+            libxdamage1 \
+            libxrandr2 \
+            libgbm1 \
+            libasound2t64
 
-      - run: |
+      # =====================================================
+      # PYTHON PACKAGES
+      # =====================================================
+
+      - name: Install Python packages
+        run: |
           pip install pandas playwright folium requests
-          playwright install
+          playwright install chromium
 
-      - name: Run script
+      # =====================================================
+      # SCRIPT VIAGER
+      # =====================================================
+
+      - name: Run Viager scraper
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python carte_finale_totale.py
-
-      - name: Commit historique
         run: |
+          python carte_finale_totale.py
+
+      # =====================================================
+      # SCRIPT ENCHERES IMMO
+      # =====================================================
+
+      - name: Run Encheres Immo scraper
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python encheres_immo.py
+
+      # =====================================================
+      # COMMIT HISTORIQUES
+      # =====================================================
+
+      - name: Commit historiques
+        run: |
+
           git config --global user.name "bot"
           git config --global user.email "bot@bot.com"
+
           git add historique_ids.csv
-          git commit -m "update historique" || echo "no changes"
+          git add historique_immo.csv
+
+          git commit -m "update historiques" || echo "no changes"
+
           git pull --rebase
+
           git push
