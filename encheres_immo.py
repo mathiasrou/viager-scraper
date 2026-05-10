@@ -1,4 +1,7 @@
-# -*- coding: utf-8 -*-
+# =========================================================
+# VIAGER SCRAPER COMPLET
+# VERSION SANS BLEU LEAFLET
+# =========================================================
 
 import asyncio
 import pandas as pd
@@ -6,27 +9,15 @@ import re
 import folium
 import os
 import requests
-import traceback
-
-from datetime import datetime
 
 from playwright.async_api import async_playwright
+
 from folium.features import DivIcon
 
 
-# =========================================================
-# CONFIG
-# =========================================================
+URL = "https://www.costes-viager.com/acheter/annonces"
 
-URL = "https://encheres-immo.com/annonces"
-
-HISTORY_FILE = "historique_immo.csv"
-
-CP_FILE = "base-officielle-codes-postaux.csv"
-
-HEADLESS = True
-
-MAX_PAGES = 100
+HISTORY_FILE = "historique_ids.csv"
 
 
 # =========================================================
@@ -39,39 +30,18 @@ def send_telegram(message):
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
     if not token or not chat_id:
-
-        print("❌ TELEGRAM NON CONFIGURE")
-
+        print("❌ TOKEN ou CHAT_ID manquant")
         return
 
-    try:
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
 
-        url = (
-            f"https://api.telegram.org/"
-            f"bot{token}/sendMessage"
-        )
-
-        requests.post(
-
-            url,
-
-            data={
-
-                "chat_id": chat_id,
-
-                "text": str(message)[:4000]
-
-            },
-
-            timeout=30
-
-        )
-
-    except Exception as e:
-
-        print("❌ ERREUR TELEGRAM")
-
-        print(e)
+    requests.post(
+        url,
+        data={
+            "chat_id": chat_id,
+            "text": message
+        }
+    )
 
 
 def send_file(path):
@@ -82,40 +52,156 @@ def send_file(path):
     if not token or not chat_id:
         return
 
-    try:
+    url = f"https://api.telegram.org/bot{token}/sendDocument"
 
-        url = (
-            f"https://api.telegram.org/"
-            f"bot{token}/sendDocument"
+    with open(path, "rb") as f:
+
+        requests.post(
+            url,
+            data={"chat_id": chat_id},
+            files={"document": f}
         )
 
-        with open(path, "rb") as f:
 
-            requests.post(
+# =========================================================
+# SCRAPING
+# =========================================================
 
-                url,
+async def scrape():
 
-                data={
+    rows = []
 
-                    "chat_id": chat_id
+    seen_urls = set()
 
-                },
+    if os.path.exists(HISTORY_FILE):
 
-                files={
+        old = pd.read_csv(HISTORY_FILE)
 
-                    "document": f
+        old_urls = set(old["url"])
 
-                },
+    else:
 
-                timeout=60
+        old_urls = set()
 
+    async with async_playwright() as p:
+
+        browser = await p.chromium.launch(
+            headless=True
+        )
+
+        page = await browser.new_page()
+
+        await page.goto(
+            URL,
+            timeout=60000
+        )
+
+        # cookies
+        try:
+
+            btn = await page.wait_for_selector(
+                "button:has-text('Accepter')",
+                timeout=5000
             )
 
-    except Exception as e:
+            await btn.click()
 
-        print("❌ SEND FILE")
+        except:
+            pass
 
-        print(e)
+        await page.wait_for_selector(
+            "rc-card-annonce"
+        )
+
+        while True:
+
+            cards = await page.query_selector_all(
+                "rc-card-annonce"
+            )
+
+            print(f"🧩 {len(cards)} cartes analysées")
+
+            for card in cards:
+
+                try:
+
+                    a = await card.query_selector("a")
+
+                    href = (
+                        await a.get_attribute("href")
+                        if a else ""
+                    )
+
+                    url = (
+                        "https://www.costes-viager.com" + href
+                        if href else ""
+                    )
+
+                    if not url:
+                        continue
+
+                    if url in seen_urls:
+                        continue
+
+                    seen_urls.add(url)
+
+                    if url in old_urls:
+
+                        print("🛑 STOP (ancienne annonce)")
+
+                        await browser.close()
+
+                        return pd.DataFrame(
+                            rows,
+                            columns=[
+                                "html",
+                                "txt",
+                                "url"
+                            ]
+                        )
+
+                    html = await card.inner_html()
+
+                    txt = await card.inner_text()
+
+                    rows.append({
+
+                        "html": html.strip(),
+
+                        "txt": txt.strip(),
+
+                        "url": url
+
+                    })
+
+                except Exception as e:
+
+                    print("❌ erreur annonce", e)
+
+            btn = await page.query_selector(
+                "button:has-text('Afficher plus de résultats')"
+            )
+
+            if not btn:
+                break
+
+            await page.evaluate(
+                "(b) => b.click()",
+                btn
+            )
+
+            await page.wait_for_timeout(3000)
+
+        await browser.close()
+
+    return pd.DataFrame(
+        rows,
+        columns=[
+            "html",
+            "txt",
+            "url"
+        ]
+    )
 
 
 # =========================================================
@@ -127,129 +213,35 @@ def clean(txt):
     if pd.isna(txt):
         return ""
 
-    txt = str(txt)
-
-    txt = txt.replace("\n", " ")
-    txt = txt.replace("\t", " ")
-    txt = txt.replace("\xa0", " ")
-    txt = txt.replace("\u202f", " ")
-
-    txt = re.sub(
-        r"\s+",
-        " ",
+    return (
         txt
+        .replace("\u202f", " ")
+        .replace("\xa0", " ")
+        .replace("\n", " ")
+        .strip()
     )
 
-    return txt.strip()
-
 
 # =========================================================
-# TYPE
+# PROCESS
 # =========================================================
 
-def extract_type(txt):
+def process(df):
 
-    t = str(txt).lower()
+    if len(df) == 0:
+        return df
 
-    appartement_keywords = [
+    df["txt"] = df["txt"].apply(clean)
 
-        "appartement",
-        "studio",
-        "duplex",
-        "triplex",
-        "loft",
+    def extract_money(label, txt):
 
-        "t1",
-        "t2",
-        "t3",
-        "t4",
-        "t5",
-        "t6",
-
-        "f1",
-        "f2",
-        "f3",
-        "f4",
-        "f5",
-
-        "balcon",
-        "étage",
-        "ascenseur",
-        "résidence"
-
-    ]
-
-    for k in appartement_keywords:
-
-        if k in t:
-            return "Appartement"
-
-    if "maison" in t:
-        return "Maison"
-
-    if "villa" in t:
-        return "Villa"
-
-    if "terrain" in t:
-        return "Terrain"
-
-    if "immeuble" in t:
-        return "Immeuble"
-
-    return "Autre"
-
-
-# =========================================================
-# EXTRACTIONS
-# =========================================================
-
-def extract_price(txt):
-
-    try:
-
-        matches = re.findall(
-            r"(\d[\d\s]{2,})\s?€",
-            txt
+        pattern = (
+            label +
+            r".*?([\d\s]+)\s?€"
         )
 
-        values = []
-
-        for m in matches:
-
-            digits = re.sub(
-                r"[^\d]",
-                "",
-                m
-            )
-
-            if digits == "":
-                continue
-
-            value = int(digits)
-
-            if value < 1000:
-                continue
-
-            if value > 100000000:
-                continue
-
-            values.append(value)
-
-        if len(values) == 0:
-            return None
-
-        return min(values)
-
-    except:
-        return None
-
-
-def extract_surface(txt):
-
-    try:
-
         m = re.search(
-            r"(\d+)\s?m²",
+            pattern,
             txt,
             re.I
         )
@@ -257,717 +249,250 @@ def extract_surface(txt):
         if not m:
             return None
 
-        return int(m.group(1))
+        value = m.group(1)
 
-    except:
-        return None
-
-
-def extract_cp(txt):
-
-    try:
-
-        matches = re.findall(
-            r"\b(\d{5})\b",
-            txt
+        digits = re.sub(
+            r"[^\d]",
+            "",
+            value
         )
 
-        if len(matches) == 0:
-            return None
+        if digits:
+            return int(digits)
 
-        return matches[0]
-
-    except:
         return None
 
+    df["bouquet"] = df["txt"].apply(
+        lambda x: extract_money(
+            "Bouquet",
+            x
+        )
+    )
 
-def extract_rooms(txt):
+    df["rente"] = df["txt"].apply(
+        lambda x: extract_money(
+            "Rente",
+            x
+        )
+    )
 
-    try:
+    def extract_age(txt):
 
-        m = re.search(
-            r"(\d+)\s*pi[eè]ces",
+        ages = re.findall(
+            r"(\d{2})\s*ans",
             txt,
             re.I
         )
 
-        if not m:
+        if not ages:
             return None
 
-        return int(m.group(1))
+        ages = [int(x) for x in ages]
 
-    except:
-        return None
+        return max(ages)
 
+    df["age"] = df["txt"].apply(
+        extract_age
+    )
 
-def extract_bedrooms(txt):
-
-    try:
-
-        m = re.search(
-            r"(\d+)\s*chambres?",
-            txt,
-            re.I
-        )
-
-        if not m:
-            return None
-
-        return int(m.group(1))
-
-    except:
-        return None
-
-
-def extract_date(txt):
-
-    try:
-
-        m = re.search(
-            r"(Débute|Termine)\s+le\s+(\d{2}/\d{2}/\d{4})",
-            txt,
-            re.I
-        )
-
-        if not m:
-            return None
-
-        return m.group(2)
-
-    except:
-        return None
-
-
-def extract_status(txt):
-
-    txt_low = txt.lower()
-
-    if "vente terminée" in txt_low:
-        return "terminee"
-
-    if "termine le" in txt_low:
-        return "en_cours"
-
-    if "débute le" in txt_low:
-        return "future"
-
-    return "inconnu"
-
-
-# =========================================================
-# DATES
-# =========================================================
-
-def compute_days_remaining(date_str):
-
-    try:
-
-        if date_str is None:
-            return ""
-
-        d = datetime.strptime(
-            date_str,
-            "%d/%m/%Y"
-        )
-
-        delta = (d - datetime.now()).days
-
-        return f"{delta}j"
-
-    except:
-        return ""
-
-
-def short_date(date_str):
-
-    try:
-
-        if date_str is None:
-            return ""
-
-        d = datetime.strptime(
-            date_str,
-            "%d/%m/%Y"
-        )
-
-        return f"{d.day}/{d.month}"
-
-    except:
-        return ""
-
-
-# =========================================================
-# PRIX ICON
-# =========================================================
-
-def price_symbol(price):
-
-    try:
-
-        if price is None:
-            return None
-
-        if price < 400000:
-            return None
-
-        n = int(price / 100000)
-
-        return f"{n}€"
-
-    except:
-        return None
-
-
-# =========================================================
-# COLOR
-# =========================================================
-
-def marker_color(price):
-
-    try:
-
-        if price is None:
-            return "gray"
-
-        if price < 100000:
-            return "red"
-
-        if price < 200000:
-            return "purple"
-
-        if price < 300000:
-            return "green"
-
-        return "gray"
-
-    except:
-        return "gray"
-
-
-# =========================================================
-# SCRAPE
-# =========================================================
-
-async def scrape():
-
-    rows = []
-
-    seen = set()
-
-    # =====================================================
-    # HISTORIQUE
-    # =====================================================
-
-    print("")
-    print("=" * 60)
-    print("📦 VERIFICATION HISTORIQUE")
-    print("=" * 60)
-
-    if os.path.exists(HISTORY_FILE):
-
-        print(f"✅ FICHIER TROUVE : {HISTORY_FILE}")
-
-        try:
-
-            old = pd.read_csv(
-
-                HISTORY_FILE,
-
-                sep=";",
-
-                encoding="utf-8-sig",
-
-                low_memory=False
-
-            )
-
-            print("✅ CSV HISTORIQUE LU")
-
-            print(f"📦 LIGNES = {len(old)}")
-
-            print(f"📦 COLONNES = {list(old.columns)}")
-
-            if "url" not in old.columns:
-
-                print("❌ COLONNE URL ABSENTE")
-
-                old_urls = set()
-
-            else:
-
-                old_urls = set(
-
-                    old["url"]
-                    .astype(str)
-                    .tolist()
-
-                )
-
-                print(f"✅ URLS = {len(old_urls)}")
-
-        except Exception as e:
-
-            print("❌ ERREUR LECTURE HISTORIQUE")
-
-            print(e)
-
-            traceback.print_exc()
-
-            old_urls = set()
-
-    else:
-
-        print("🆕 AUCUN HISTORIQUE")
-
-        old_urls = set()
-
-    # =====================================================
-    # PLAYWRIGHT
-    # =====================================================
-
-    async with async_playwright() as p:
-
-        browser = await p.chromium.launch(
-            headless=HEADLESS
-        )
-
-        page = await browser.new_page()
-
-        await page.goto(
-            URL,
-            timeout=60000
-        )
-
-        await page.wait_for_timeout(5000)
-
-        page_num = 1
-
-        while True:
-
-            print("")
-            print("=" * 60)
-            print(f"📄 PAGE {page_num}")
-            print("=" * 60)
-
-            await page.wait_for_timeout(3000)
-
-            articles = await page.query_selector_all(
-                "article"
-            )
-
-            print(f"🧩 ARTICLES = {len(articles)}")
-
-            if len(articles) == 0:
-                break
-
-            for article in articles:
-
-                try:
-
-                    txt = await article.inner_text()
-
-                    txt = clean(txt)
-
-                    if len(txt) < 20:
-                        continue
-
-                    annonce_url = None
-
-                    links = await article.query_selector_all("a")
-
-                    for link in links:
-
-                        href = await link.get_attribute("href")
-
-                        if not href:
-                            continue
-
-                        if href.startswith("/"):
-
-                            annonce_url = (
-                                "https://encheres-immo.com"
-                                + href
-                            )
-
-                        else:
-
-                            annonce_url = href
-
-                        break
-
-                    if annonce_url is None:
-                        continue
-
-                    # =========================================
-                    # DOUBLONS
-                    # =========================================
-
-                    if annonce_url in seen:
-                        continue
-
-                    seen.add(annonce_url)
-
-                    prix = extract_price(txt)
-
-                    surface = extract_surface(txt)
-
-                    cp = extract_cp(txt)
-
-                    type_bien = extract_type(txt)
-
-                    rooms = extract_rooms(txt)
-
-                    bedrooms = extract_bedrooms(txt)
-
-                    date_vente = extract_date(txt)
-
-                    status = extract_status(txt)
-
-                    rows.append({
-
-                        "url": annonce_url,
-
-                        "txt": txt,
-
-                        "prix": prix,
-
-                        "surface": surface,
-
-                        "cp": cp,
-
-                        "type": type_bien,
-
-                        "pieces": rooms,
-
-                        "chambres": bedrooms,
-
-                        "date_vente": date_vente,
-
-                        "status": status,
-
-                        "is_new": annonce_url not in old_urls
-
-                    })
-
-                    print(
-                        f"✅ {type_bien} | "
-                        f"{prix}€ | "
-                        f"{status}"
-                    )
-
-                except Exception as e:
-
-                    print("❌ ARTICLE")
-
-                    print(e)
-
-            # =============================================
-            # SUIVANT
-            # =============================================
-
-            try:
-
-                next_btn = page.locator(
-                    "text=Suivant"
-                )
-
-                count_next = await next_btn.count()
-
-                print(f"➡️ BOUTON SUIVANT = {count_next}")
-
-                if count_next == 0:
-                    break
-
-                await next_btn.first.click()
-
-                await page.wait_for_timeout(5000)
-
-            except Exception as e:
-
-                print("❌ ERREUR SUIVANT")
-
-                print(e)
-
-                break
-
-            page_num += 1
-
-            if page_num > MAX_PAGES:
-                break
-
-        await browser.close()
-
-    df = pd.DataFrame(rows)
-
-    print("")
-    print("=" * 60)
-    print("📊 DATAFRAME SCRAPE")
-    print("=" * 60)
-
-    print(df.head())
-
-    print(f"📦 TOTAL = {len(df)}")
-
-    if len(df) > 0:
-
-        before = len(df)
-
-        df = df.drop_duplicates(
-            subset=["url"],
-            keep="first"
-        )
-
-        after = len(df)
-
-        print(f"🧹 DOUBLONS SUPPRIMES = {before - after}")
+    df["cp"] = df["txt"].str.extract(
+        r"\((\d{5})\)"
+    )
 
     return df
 
 
 # =========================================================
-# GEO
+# CARTE
 # =========================================================
 
-def geolocate(df):
-
-    print("")
-    print("=" * 60)
-    print("🌍 GEOLOCALISATION")
-    print("=" * 60)
-
-    geo = pd.read_csv(
-
-        CP_FILE,
-
-        low_memory=False
-
-    )
-
-    print(f"📦 GEO LIGNES = {len(geo)}")
-
-    print(f"📦 GEO COLONNES = {list(geo.columns)}")
-
-    geo = geo[[
-
-        "code_postal",
-        "latitude",
-        "longitude"
-
-    ]]
-
-    geo.columns = [
-
-        "cp",
-        "lat",
-        "lon"
-
-    ]
-
-    geo["cp"] = geo["cp"].astype(str)
-
-    df["cp"] = df["cp"].astype(str)
-
-    df = df.merge(
-
-        geo,
-
-        on="cp",
-
-        how="left"
-
-    )
-
-    print("✅ GEO OK")
-
-    return df
-
-
-# =========================================================
-# MAP
-# =========================================================
-
-def create_map(df):
-
-    print("")
-    print("=" * 60)
-    print("🗺️ CREATION CARTE")
-    print("=" * 60)
-
-    active_df = df[
-        df["status"] != "terminee"
-    ].copy()
-
-    active_df = active_df.drop_duplicates(
-        subset=["url"],
-        keep="first"
-    )
-
-    print(f"📦 ACTIFS = {len(active_df)}")
+def create_map(valid_df, rejected_df):
 
     m = folium.Map(
-
         location=[46.5, 2.5],
-
         zoom_start=6
-
     )
 
-    used_positions = {}
+    # =====================================================
+    # VALIDES
+    # =====================================================
 
-    for _, row in active_df.iterrows():
+    for _, row in valid_df.dropna(
+        subset=["lat"]
+    ).iterrows():
 
-        try:
+        txt = str(
+            row.get("txt", "")
+        ).lower()
 
-            if pd.isna(row["lat"]):
-                continue
+        age = row.get("age")
 
-            lat = float(row["lat"])
-            lon = float(row["lon"])
+        color = "green"
 
-            pos_key = f"{lat}_{lon}"
+        if pd.notna(age):
 
-            if pos_key not in used_positions:
+            age = int(age)
 
-                used_positions[pos_key] = 0
+            if age < 72:
+                color = "#000000"
+
+            elif age < 78:
+                color = "#1e8e3e"
+
+            elif age < 84:
+                color = "#ff9800"
 
             else:
+                color = "#d32f2f"
 
-                used_positions[pos_key] += 1
+        symbol = "🏠"
 
-            offset = used_positions[pos_key]
+        if "appartement" in txt:
+            symbol = "🏢"
 
-            lat += offset * 0.0007
-            lon += offset * 0.0007
+        popup = (
+            "<b>✅ ANNONCE VALIDEE</b><br><br>"
+            f"👴 Age : {row.get('age')} ans<br>"
+            f"💰 Bouquet : {row.get('bouquet')} €<br>"
+            f"📆 Rente : {row.get('rente')} €/mois<br>"
+            f"📍 CP : {row.get('cp')}<br><br>"
+            f"<a href='{row['url']}' target='_blank'>"
+            "Voir annonce"
+            "</a>"
+        )
 
-            color = marker_color(
-                row["prix"]
-            )
+        # =================================================
+        # HTML CUSTOM
+        # =================================================
 
-            center_symbol = "🏠"
+        html = f"""
+        <div style="
+            width:40px;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+        ">
 
-            if row["type"] == "Appartement":
-                center_symbol = "🏢"
-
-            if row["type"] == "Terrain":
-                center_symbol = "🌳"
-
-            if row["type"] == "Immeuble":
-                center_symbol = "🏬"
-
-            if row["type"] == "Villa":
-                center_symbol = "🏡"
-
-            symb = price_symbol(
-                row["prix"]
-            )
-
-            if symb is not None:
-                center_symbol = symb
-
-            bottom_text = ""
-
-            if row["status"] == "en_cours":
-
-                bottom_text = compute_days_remaining(
-                    row["date_vente"]
-                )
-
-            if row["status"] == "future":
-
-                bottom_text = short_date(
-                    row["date_vente"]
-                )
-
-            popup = f"""
-            <b>{row['type']}</b><br><br>
-
-            💰 Prix :
-            {row['prix']} €<br>
-
-            📐 Surface :
-            {row['surface']} m²<br>
-
-            🚪 Pièces :
-            {row['pieces']}<br>
-
-            🛏️ Chambres :
-            {row['chambres']}<br>
-
-            📅 Vente :
-            {row['date_vente']}<br>
-
-            📍 CP :
-            {row['cp']}<br><br>
-
-            <a href="{row['url']}"
-            target="_blank">
-            Voir annonce
-            </a>
-            """
-
-            html = f"""
             <div style="
+                background:{color};
+                width:38px;
+                height:38px;
+                border-radius:50%;
                 display:flex;
-                flex-direction:column;
                 align-items:center;
                 justify-content:center;
+                color:white;
+                font-weight:bold;
+                font-size:16px;
+                border:2px solid white;
+                box-shadow:0 0 4px rgba(0,0,0,0.5);
+                margin:0;
+                padding:0;
             ">
-
-                <div style="
-                    background:{color};
-                    width:38px;
-                    height:38px;
-                    border-radius:50%;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    color:white;
-                    font-weight:bold;
-                    font-size:14px;
-                    border:2px solid white;
-                    box-shadow:0 0 4px rgba(0,0,0,0.4);
-                ">
-                    {center_symbol}
-                </div>
-
-                <div style="
-                    font-size:11px;
-                    font-weight:bold;
-                    color:black;
-                    margin-top:2px;
-                    background:white;
-                    padding:1px 4px;
-                    border-radius:6px;
-                    border:1px solid #999;
-                ">
-                    {bottom_text}
-                </div>
-
+                {symbol}
             </div>
-            """
 
-            folium.Marker(
+        </div>
+        """
 
-                [lat, lon],
+        # =================================================
+        # MARKER
+        # =================================================
 
-                popup=folium.Popup(
-                    popup,
-                    max_width=350
-                ),
+        folium.Marker(
 
-                icon=DivIcon(
-                    html=html
-                )
+            [row["lat"], row["lon"]],
 
-            ).add_to(m)
+            popup=folium.Popup(
+                popup,
+                max_width=300
+            ),
 
-        except Exception as e:
+            icon=DivIcon(
 
-            print("❌ MARKER")
+                icon_size=(40, 40),
 
-            print(e)
+                icon_anchor=(20, 20),
 
-    m.save("carte_encheres_immo.html")
+                class_name="empty",
+
+                html=html
+
+            )
+
+        ).add_to(m)
+
+    # =====================================================
+    # REJETEES
+    # =====================================================
+
+    for _, row in rejected_df.dropna(
+        subset=["lat"]
+    ).iterrows():
+
+        popup = (
+            "<b>❌ REJETEE</b><br><br>"
+            f"👴 Age : {row.get('age')} ans<br>"
+            f"💰 Bouquet : {row.get('bouquet')} €<br>"
+            f"📆 Rente : {row.get('rente')} €/mois<br>"
+            f"📍 CP : {row.get('cp')}<br><br>"
+            f"<a href='{row['url']}' target='_blank'>"
+            "Voir annonce"
+            "</a>"
+        )
+
+        html = """
+        <div style="
+            width:40px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        ">
+
+            <div style="
+                background:#9e9e9e;
+                width:38px;
+                height:38px;
+                border-radius:50%;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                color:white;
+                font-size:18px;
+                border:2px solid white;
+                box-shadow:0 0 4px rgba(0,0,0,0.5);
+            ">
+                ❌
+            </div>
+
+        </div>
+        """
+
+        folium.Marker(
+
+            [row["lat"], row["lon"]],
+
+            popup=folium.Popup(
+                popup,
+                max_width=300
+            ),
+
+            icon=DivIcon(
+
+                icon_size=(40, 40),
+
+                icon_anchor=(20, 20),
+
+                class_name="empty",
+
+                html=html
+
+            )
+
+        ).add_to(m)
+
+    m.save("carte.html")
 
     print("✅ CARTE SAUVEGARDEE")
 
@@ -978,202 +503,190 @@ def create_map(df):
 
 async def main():
 
-    try:
+    print("🚀 SCRAPING...")
 
-        print("")
-        print("=" * 60)
-        print("🚀 DEMARRAGE")
-        print("=" * 60)
+    df = await scrape()
 
-        df = await scrape()
+    print("📊 EXTRACTION...")
 
-        print("")
-        print("=" * 60)
-        print("📊 CHECK DATAFRAME")
-        print("=" * 60)
+    df = process(df)
 
-        print(type(df))
-
-        print(f"📦 TOTAL = {len(df)}")
-
-        if len(df) == 0:
-
-            send_telegram(
-                "😴 AUCUNE ANNONCE"
-            )
-
-            return
-
-        # =================================================
-        # GEO
-        # =================================================
-
-        df = geolocate(df)
-
-        # =================================================
-        # SAVE HISTORIQUE
-        # =================================================
-
-        print("")
-        print("=" * 60)
-        print("💾 SAVE HISTORIQUE")
-        print("=" * 60)
-
-        try:
-
-            if os.path.exists(HISTORY_FILE):
-
-                try:
-
-                    old_save = pd.read_csv(
-
-                        HISTORY_FILE,
-
-                        sep=";",
-
-                        encoding="utf-8-sig",
-
-                        low_memory=False
-
-                    )
-
-                    print(f"📦 ANCIEN = {len(old_save)}")
-
-                    df = pd.concat(
-
-                        [old_save, df],
-
-                        ignore_index=True
-
-                    )
-
-                except Exception as e:
-
-                    print("❌ ERREUR RELECTURE")
-
-                    print(e)
-
-            before = len(df)
-
-            df = df.drop_duplicates(
-
-                subset=["url"],
-
-                keep="first"
-
-            )
-
-            after = len(df)
-
-            print(f"🧹 DOUBLONS = {before - after}")
-
-            print(f"📦 FINAL = {len(df)}")
-
-            print(f"📦 COLONNES = {list(df.columns)}")
-
-            if "url" not in df.columns:
-
-                raise Exception(
-                    "COLONNE URL ABSENTE"
-                )
-
-            df.to_csv(
-
-                HISTORY_FILE,
-
-                sep=";",
-
-                index=False,
-
-                encoding="utf-8-sig"
-
-            )
-
-            print("✅ HISTORIQUE SAUVEGARDE")
-
-        except Exception as e:
-
-            print("❌ SAVE HISTORIQUE")
-
-            print(e)
-
-            traceback.print_exc()
-
-        # =================================================
-        # NEW
-        # =================================================
-
-        new_df = df[
-            df["is_new"] == True
-        ].copy()
-
-        print(f"🔥 NOUVELLES = {len(new_df)}")
-
-        if len(new_df) > 0:
-
-            send_telegram(
-                f"🔥 {len(new_df)} nouvelles annonces Encheres Immo"
-            )
-
-            for _, row in new_df.iterrows():
-
-                msg = ""
-
-                msg += f"🏠 {row['type']}\n\n"
-
-                msg += f"💰 Prix : {row['prix']} €\n"
-
-                msg += f"📐 Surface : {row['surface']} m²\n"
-
-                msg += f"🚪 Pièces : {row['pieces']}\n"
-
-                msg += f"🛏️ Chambres : {row['chambres']}\n"
-
-                msg += f"📅 Vente : {row['date_vente']}\n"
-
-                msg += f"📊 Status : {row['status']}\n"
-
-                msg += f"📍 CP : {row['cp']}\n\n"
-
-                msg += f"🔗 {row['url']}"
-
-                send_telegram(msg)
-
-        else:
-
-            send_telegram(
-                "😴 Aucune nouvelle annonce Encheres Immo"
-            )
-
-        # =================================================
-        # MAP
-        # =================================================
-
-        create_map(df)
-
-        send_file(
-            "carte_encheres_immo.html"
-        )
-
-        print("")
-        print("=" * 60)
-        print("✅ FIN")
-        print("=" * 60)
-
-    except Exception as e:
-
-        print("")
-        print("=" * 60)
-        print("❌ ERREUR MAIN")
-        print("=" * 60)
-
-        print(e)
-
-        traceback.print_exc()
+    if len(df) == 0:
 
         send_telegram(
-            f"❌ ERREUR ENCHERES IMMO\n\n{str(e)}"
+            "😴 Aucune nouvelle annonce"
         )
+
+        return
+
+    # =====================================================
+    # FILTRES
+    # =====================================================
+
+    filtre_vendu = df["txt"].str.contains(
+        "vendu",
+        case=False,
+        na=False
+    )
+
+    filtre_femme = df["txt"].str.contains(
+        r"Femme\s*,?\s*\d+\s*ans",
+        regex=True,
+        case=False,
+        na=False
+    )
+
+    filtre_couple = df["txt"].str.contains(
+        r"Femme.*Homme|Homme.*Femme",
+        regex=True,
+        case=False,
+        na=False
+    )
+
+    filtre_rente = (
+        df["rente"].fillna(0) > 500
+    )
+
+    filtre_bouquet = (
+        df["bouquet"].fillna(0) > 150000
+    )
+
+    rejected = df[
+        filtre_vendu
+        |
+        filtre_femme
+        |
+        filtre_couple
+        |
+        filtre_rente
+        |
+        filtre_bouquet
+    ].copy()
+
+    valid = df[
+        ~df["url"].isin(
+            rejected["url"]
+        )
+    ].copy()
+
+    print(f"✅ conservées : {len(valid)}")
+
+    print(f"❌ rejetées : {len(rejected)}")
+
+    # =====================================================
+    # GEO
+    # =====================================================
+
+    geo = pd.read_csv(
+        "base-officielle-codes-postaux.csv"
+    )
+
+    geo = geo[[
+        "code_postal",
+        "latitude",
+        "longitude"
+    ]]
+
+    geo.columns = [
+        "cp",
+        "lat",
+        "lon"
+    ]
+
+    geo["cp"] = geo["cp"].astype(str)
+
+    valid["cp"] = valid["cp"].astype(str)
+
+    rejected["cp"] = rejected["cp"].astype(str)
+
+    valid = valid.merge(
+        geo,
+        on="cp",
+        how="left"
+    )
+
+    rejected = rejected.merge(
+        geo,
+        on="cp",
+        how="left"
+    )
+
+    # =====================================================
+    # HISTORIQUE
+    # =====================================================
+
+    if os.path.exists(HISTORY_FILE):
+
+        old = pd.read_csv(HISTORY_FILE)
+
+        old_urls = set(old["url"])
+
+    else:
+
+        old_urls = set()
+
+    new_valid = valid[
+        ~valid["url"].isin(old_urls)
+    ]
+
+    combined = pd.concat([
+        pd.DataFrame({
+            "url": list(old_urls)
+        }),
+        valid[["url"]]
+    ]).drop_duplicates()
+
+    combined.to_csv(
+        HISTORY_FILE,
+        index=False
+    )
+
+    # =====================================================
+    # TELEGRAM
+    # =====================================================
+
+    if len(new_valid) > 0:
+
+        send_telegram(
+            f"🔥 {len(new_valid)} nouvelles annonces"
+        )
+
+        for _, row in new_valid.iterrows():
+
+            msg = ""
+
+            msg += "🏠 VIAGER\n\n"
+
+            msg += f"👴 Age : {row.get('age')}\n"
+
+            msg += f"💰 Bouquet : {row.get('bouquet')} €\n"
+
+            msg += f"📆 Rente : {row.get('rente')} €/mois\n"
+
+            msg += f"📍 CP : {row.get('cp')}\n\n"
+
+            msg += f"🔗 {row['url']}"
+
+            send_telegram(msg)
+
+    else:
+
+        send_telegram(
+            "😴 Aucune nouvelle annonce"
+        )
+
+    # =====================================================
+    # CARTE
+    # =====================================================
+
+    create_map(
+        valid,
+        rejected
+    )
+
+    send_file("carte.html")
+
+    print("✅ FIN")
 
 
 # =========================================================
