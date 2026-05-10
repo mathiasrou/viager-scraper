@@ -591,9 +591,9 @@ def geolocate(df):
     ]
 
     geo = geo[[
-        "code_postal",
-        "latitude",
-        "longitude"
+        "Code_postal",
+        "Latitude",
+        "Longitude"
     ]]
 
     geo.columns = [
