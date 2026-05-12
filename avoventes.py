@@ -1,772 +1,498 @@
-# =========================================================
-# AVOVENTES SCRAPER
-# ULTRA DEBUG VERSION
-# =========================================================
+# ============================================================
+# SCRAPER AVOVENTES ULTRA DEBUG
+# ============================================================
+# Objectif :
+# - comprendre EXACTEMENT où sont les annonces
+# - détecter iframe / JS / API / lazy loading
+# - sauvegarder énormément de debug
+# - tenter plusieurs stratégies automatiquement
+#
+# Nécessite :
+# pip install playwright bs4 pandas lxml
+# playwright install
+# ============================================================
 
 import asyncio
-import pandas as pd
+import json
 import re
-import traceback
+import time
+from urllib.parse import urljoin
+
+import pandas as pd
+from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
 
 URL = "https://avoventes.fr/recherche/toutes"
 
 
-# =========================================================
-# CLEAN
-# =========================================================
+# ============================================================
+# HELPERS
+# ============================================================
 
-def clean(txt):
+def save(name, content, mode="w", encoding="utf-8"):
+    with open(name, mode, encoding=encoding) as f:
+        f.write(content)
 
-    if txt is None:
-        return ""
 
-    txt = str(txt)
+def sep(title):
+    print("\n" + "=" * 80)
+    print(title)
+    print("=" * 80)
 
-    txt = txt.replace("\n", " ")
-    txt = txt.replace("\t", " ")
-    txt = txt.replace("\xa0", " ")
-    txt = txt.replace("\u202f", " ")
 
-    txt = re.sub(r"\s+", " ", txt)
+# ============================================================
+# MAIN
+# ============================================================
 
-    return txt.strip()
-
-
-# =========================================================
-# PRICE
-# =========================================================
-
-def extract_price(txt):
-
-    try:
-
-        matches = re.findall(
-            r"(\d[\d\s]{2,})\s?€",
-            txt
-        )
-
-        vals = []
-
-        for m in matches:
-
-            m = re.sub(r"\s+", "", m)
-
-            if m.isdigit():
-
-                v = int(m)
-
-                if 1000 <= v <= 100000000:
-
-                    vals.append(v)
-
-        if len(vals) == 0:
-            return None
-
-        return min(vals)
-
-    except:
-        return None
-
-
-# =========================================================
-# CP
-# =========================================================
-
-def extract_cp(txt):
-
-    try:
-
-        m = re.findall(
-            r"\b(\d{5})\b",
-            txt
-        )
-
-        if len(m) > 0:
-            return m[0]
-
-    except:
-        pass
-
-    return None
-
-
-# =========================================================
-# TYPE
-# =========================================================
-
-def detect_type(txt):
-
-    t = txt.lower()
-
-    if "appartement" in t:
-        return "Appartement"
-
-    if "maison" in t:
-        return "Maison"
-
-    if "villa" in t:
-        return "Villa"
-
-    if "terrain" in t:
-        return "Terrain"
-
-    if "immeuble" in t:
-        return "Immeuble"
-
-    if "studio" in t:
-        return "Studio"
-
-    if "garage" in t:
-        return "Garage"
-
-    return "Autre"
-
-
-# =========================================================
-# DEBUG ELEMENT
-# =========================================================
-
-async def debug_selector(page, selector):
-
-    print("")
-    print("================================================")
-    print(f"🔍 SELECTOR DEBUG : {selector}")
-    print("================================================")
-
-    try:
-
-        count = await page.locator(selector).count()
-
-        print(f"🧩 COUNT = {count}")
-
-        if count > 0:
-
-            for i in range(min(count, 5)):
-
-                el = page.locator(selector).nth(i)
-
-                txt = clean(
-                    await el.inner_text()
-                )
-
-                html = clean(
-                    await el.inner_html()
-                )
-
-                print("")
-                print(f"---------- ELEMENT {i+1} ----------")
-
-                print("📝 TEXT:")
-                print(txt[:1000])
-
-                print("")
-                print("💾 HTML:")
-                print(html[:1000])
-
-    except Exception as e:
-
-        print("❌ ERREUR SELECTOR")
-        print(e)
-
-
-# =========================================================
-# MAIN SCRAPE
-# =========================================================
-
-async def scrape():
-
-    rows = []
-
-    seen = set()
-
-    print("")
-    print("================================================")
-    print("🚀 START")
-    print("================================================")
+async def main():
 
     async with async_playwright() as p:
 
-        # =================================================
-        # BROWSER
-        # =================================================
-
-        print("")
-        print("================================================")
-        print("🌐 OPEN BROWSER")
-        print("================================================")
-
         browser = await p.chromium.launch(
-
             headless=False,
-
-            args=[
-
-                "--no-sandbox",
-                "--disable-dev-shm-usage"
-
-            ]
+            slow_mo=250
         )
-
-        # =================================================
-        # CONTEXT
-        # =================================================
-
-        print("")
-        print("================================================")
-        print("🧠 CONTEXT")
-        print("================================================")
 
         context = await browser.new_context(
-
-            viewport={
-                "width": 1800,
-                "height": 1200
-            },
-
-            locale="fr-FR",
-
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            viewport={"width": 1600, "height": 2400}
         )
-
-        # =================================================
-        # PAGE
-        # =================================================
 
         page = await context.new_page()
 
-        # =================================================
-        # REQUESTS
-        # =================================================
+        # ====================================================
+        # CAPTURE TOUS LES XHR / FETCH / API
+        # ====================================================
 
-        async def log_request(request):
+        api_calls = []
 
-            try:
-
-                url = request.url
-
-                if any(x in url.lower() for x in [
-
-                    "api",
-                    "graphql",
-                    "json",
-                    "search",
-                    "vente",
-                    "annonce"
-
-                ]):
-
-                    print("")
-                    print("================================================")
-                    print("📡 REQUEST")
-                    print("================================================")
-
-                    print(url)
-
-            except:
-                pass
-
-        page.on(
-            "request",
-            log_request
-        )
-
-        # =================================================
-        # RESPONSE
-        # =================================================
-
-        async def log_response(response):
+        async def handle_response(response):
 
             try:
 
                 url = response.url
+                ct = response.headers.get("content-type", "")
 
-                if any(x in url.lower() for x in [
+                interesting = any([
+                    "json" in ct,
+                    "api" in url.lower(),
+                    "vente" in url.lower(),
+                    "encher" in url.lower(),
+                    "search" in url.lower(),
+                    "recherche" in url.lower(),
+                ])
 
-                    "api",
-                    "graphql",
-                    "json",
-                    "search",
-                    "vente",
-                    "annonce"
+                if interesting:
 
-                ]):
-
-                    print("")
-                    print("================================================")
-                    print("📥 RESPONSE")
-                    print("================================================")
-
+                    print("\n📡 API/RESPONSE")
                     print(url)
+                    print(ct)
 
-                    ct = response.headers.get(
-                        "content-type",
-                        ""
-                    )
+                    api_calls.append({
+                        "url": url,
+                        "content_type": ct,
+                        "status": response.status
+                    })
 
-                    print(f"CONTENT TYPE = {ct}")
+                    try:
 
-                    if "json" in ct:
+                        txt = await response.text()
 
-                        try:
+                        if len(txt) > 100000:
+                            txt = txt[:100000]
 
-                            data = await response.text()
+                        filename = (
+                            "api_" +
+                            re.sub(r"[^a-zA-Z0-9]", "_", url)[:120] +
+                            ".txt"
+                        )
 
-                            print("")
-                            print("📦 JSON:")
-                            print(data[:3000])
+                        save(filename, txt)
 
-                        except:
-                            pass
+                    except Exception as e:
+                        print("response text error", e)
 
-            except:
-                pass
+            except Exception as e:
+                print("handle_response error", e)
 
-        page.on(
-            "response",
-            log_response
-        )
+        page.on("response", handle_response)
 
-        # =================================================
-        # OPEN
-        # =================================================
+        # ====================================================
+        # GOTO
+        # ====================================================
 
-        print("")
-        print("================================================")
-        print("🌐 OPEN URL")
-        print("================================================")
-
-        print(URL)
+        sep("GOTO")
 
         await page.goto(
-
             URL,
-
-            timeout=120000,
-
-            wait_until="networkidle"
+            wait_until="domcontentloaded",
+            timeout=120000
         )
 
-        # =================================================
-        # WAIT
-        # =================================================
+        print("URL =", page.url)
+        print("TITLE =", await page.title())
 
-        print("")
-        print("================================================")
-        print("⏳ WAIT")
-        print("================================================")
+        # ====================================================
+        # ATTENTE LONGUE
+        # ====================================================
 
-        await page.wait_for_timeout(8000)
+        sep("LONG WAIT")
 
-        # =================================================
-        # COOKIE
-        # =================================================
+        for i in range(30):
 
-        print("")
-        print("================================================")
-        print("🍪 COOKIE")
-        print("================================================")
+            await page.wait_for_timeout(1000)
 
-        buttons = [
+            print(f"wait {i+1}/30")
 
-            "button:has-text('Tout accepter')",
-            "button:has-text('Accepter')",
-            "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll"
-
-        ]
-
-        for b in buttons:
-
-            try:
-
-                await page.locator(b).click(timeout=3000)
-
-                print(f"✅ CLICK COOKIE = {b}")
-
-                break
-
-            except:
-                pass
-
-        await page.wait_for_timeout(4000)
-
-        # =================================================
-        # PAGE TITLE
-        # =================================================
-
-        print("")
-        print("================================================")
-        print("📄 PAGE INFO")
-        print("================================================")
-
-        print(await page.title())
-
-        # =================================================
-        # BODY
-        # =================================================
-
-        body = await page.locator("body").inner_text()
-
-        body = clean(body)
-
-        print("")
-        print("================================================")
-        print("📄 BODY PREVIEW")
-        print("================================================")
-
-        print(body[:5000])
-
-        # =================================================
-        # SCROLL
-        # =================================================
-
-        print("")
-        print("================================================")
-        print("🖱️ SCROLL")
-        print("================================================")
-
-        for i in range(20):
-
-            print(f"🖱️ {i+1}/20")
-
-            await page.evaluate("""
-
-window.scrollBy(
-    0,
-    window.innerHeight
-)
-
-""")
-
-            await page.wait_for_timeout(2500)
-
-        # =================================================
-        # END
-        # =================================================
-
-        print("")
-        print("================================================")
-        print("🔚 END")
-        print("================================================")
-
-        await page.keyboard.press("End")
-
-        await page.wait_for_timeout(5000)
-
-        # =================================================
+        # ====================================================
         # SCREENSHOT
-        # =================================================
+        # ====================================================
 
-        print("")
-        print("================================================")
-        print("🖼️ SCREENSHOT")
-        print("================================================")
+        sep("SCREENSHOT")
 
         await page.screenshot(
-
-            path="debug_avoventes.png",
-
+            path="debug_full.png",
             full_page=True
         )
 
-        print("✅ SCREENSHOT SAVED")
+        print("saved screenshot")
 
-        # =================================================
+        # ====================================================
         # HTML
-        # =================================================
+        # ====================================================
 
-        print("")
-        print("================================================")
-        print("💾 SAVE HTML")
-        print("================================================")
+        sep("HTML")
 
         html = await page.content()
 
-        with open(
-            "debug_avoventes.html",
-            "w",
-            encoding="utf-8"
-        ) as f:
+        save("debug_page.html", html)
 
-            f.write(html)
+        print("html size =", len(html))
 
-        print("✅ HTML SAVED")
+        # ====================================================
+        # INNER TEXT
+        # ====================================================
 
-        # =================================================
-        # SELECTORS DEBUG
-        # =================================================
+        sep("BODY TEXT")
+
+        try:
+
+            body_text = await page.locator("body").inner_text()
+
+            save("body_text.txt", body_text)
+
+            print(body_text[:5000])
+
+        except Exception as e:
+            print("body text error", e)
+
+        # ====================================================
+        # IFRAMES
+        # ====================================================
+
+        sep("IFRAMES")
+
+        frames = page.frames
+
+        print("frame count =", len(frames))
+
+        for i, frame in enumerate(frames):
+
+            print("\nFRAME", i)
+            print("url =", frame.url)
+
+            try:
+
+                frame_html = await frame.content()
+
+                save(f"frame_{i}.html", frame_html)
+
+                print("html size =", len(frame_html))
+
+            except Exception as e:
+                print("frame content error", e)
+
+        # ====================================================
+        # LOCATORS MASSIFS
+        # ====================================================
+
+        sep("LOCATOR COUNTS")
 
         selectors = [
-
             "article",
             ".card",
             ".item",
             ".listing",
-            ".property",
             ".vente",
             ".annonce",
-            ".enchere",
-            ".search-result",
+            ".property",
             ".result",
-            ".grid-item",
-            ".tile",
+            ".search-result",
+            "[class*=vente]",
+            "[class*=annonce]",
+            "[class*=card]",
+            "[class*=item]",
+            "[class*=result]",
             "a",
-            "div",
-            "section",
-            "li"
-
+            "img",
         ]
 
-        for s in selectors:
-
-            await debug_selector(
-                page,
-                s
-            )
-
-        # =================================================
-        # ALL LINKS
-        # =================================================
-
-        print("")
-        print("================================================")
-        print("🔗 ALL LINKS")
-        print("================================================")
-
-        links = await page.locator("a").evaluate_all("""
-
-els => els.map(e => ({
-
-    href: e.href || "",
-    text: e.innerText || "",
-    html: e.innerHTML || ""
-
-}))
-
-""")
-
-        print(f"🔗 TOTAL = {len(links)}")
-
-        # =================================================
-        # LOOP LINKS
-        # =================================================
-
-        for idx, item in enumerate(links):
+        for sel in selectors:
 
             try:
 
-                print("")
-                print("################################################")
-                print(f"🔎 LINK {idx+1}/{len(links)}")
-                print("################################################")
+                count = await page.locator(sel).count()
 
-                url = clean(item["href"])
-                txt = clean(item["text"])
-                html = clean(item["html"])
-
-                print("")
-                print("🌐 URL")
-                print(url)
-
-                print("")
-                print("📝 TEXT")
-                print(txt[:2000])
-
-                print("")
-                print("💾 HTML")
-                print(html[:2000])
-
-                # =========================================
-                # FILTER URL
-                # =========================================
-
-                if "avoventes.fr" not in url:
-
-                    print("⛔ BAD DOMAIN")
-
-                    continue
-
-                # =========================================
-                # BAD LINKS
-                # =========================================
-
-                bad = [
-
-                    "#",
-                    "facebook",
-                    "linkedin",
-                    "twitter",
-                    "youtube",
-                    "mentions",
-                    "privacy",
-                    "conditions",
-                    "contact",
-                    "admin",
-                    "login",
-                    "friendlycaptcha",
-                    "recherche/toutes"
-
-                ]
-
-                if any(x in url.lower() for x in bad):
-
-                    print("⛔ FILTER URL")
-
-                    continue
-
-                # =========================================
-                # KEYWORDS
-                # =========================================
-
-                combined = (
-                    txt + " " + html
-                ).lower()
-
-                kws = [
-
-                    "appartement",
-                    "maison",
-                    "villa",
-                    "terrain",
-                    "immeuble",
-                    "studio",
-                    "garage",
-                    "local"
-
-                ]
-
-                if not any(k in combined for k in kws):
-
-                    print("⛔ NO KEYWORD")
-
-                    continue
-
-                # =========================================
-                # DUPLICATE
-                # =========================================
-
-                if url in seen:
-
-                    print("⛔ DUPLICATE")
-
-                    continue
-
-                seen.add(url)
-
-                # =========================================
-                # ROW
-                # =========================================
-
-                row = {
-
-                    "url": url,
-
-                    "type": detect_type(combined),
-
-                    "prix": extract_price(combined),
-
-                    "cp": extract_cp(combined),
-
-                    "texte": combined[:5000]
-
-                }
-
-                rows.append(row)
-
-                print("")
-                print("✅ VALID ANNOUNCE")
-
-                print(row)
+                print(f"{sel:30} -> {count}")
 
             except Exception as e:
+                print(sel, e)
 
-                print("")
-                print("❌ LINK ERROR")
-                print(e)
+        # ====================================================
+        # TOUS LES LIENS
+        # ====================================================
 
-        # =================================================
-        # CLOSE
-        # =================================================
+        sep("ALL LINKS")
+
+        links = await page.locator("a").evaluate_all("""
+        els => els.map(e => ({
+            href: e.href,
+            text: e.innerText,
+            cls: e.className
+        }))
+        """)
+
+        save(
+            "all_links.json",
+            json.dumps(links, indent=2, ensure_ascii=False)
+        )
+
+        print("link count =", len(links))
+
+        # ====================================================
+        # FILTRE DES LIENS SUSPECTS
+        # ====================================================
+
+        sep("POTENTIAL ANNOUNCES")
+
+        potential = []
+
+        keywords = [
+            "vente",
+            "encher",
+            "bien",
+            "maison",
+            "appartement",
+            "villa",
+            "terrain",
+            "local",
+            "immeuble",
+        ]
+
+        for l in links:
+
+            txt = (l.get("text") or "").lower()
+            href = (l.get("href") or "").lower()
+
+            if any(k in txt for k in keywords) or any(k in href for k in keywords):
+
+                potential.append(l)
+
+                print("\nTEXT =", l["text"])
+                print("HREF =", l["href"])
+
+        save(
+            "potential_links.json",
+            json.dumps(potential, indent=2, ensure_ascii=False)
+        )
+
+        print("\npotential =", len(potential))
+
+        # ====================================================
+        # SCROLL INFINI
+        # ====================================================
+
+        sep("SCROLL TEST")
+
+        previous_height = 0
+
+        for i in range(20):
+
+            current_height = await page.evaluate(
+                "document.body.scrollHeight"
+            )
+
+            print("height =", current_height)
+
+            if current_height == previous_height:
+                print("height stable")
+            else:
+                previous_height = current_height
+
+            await page.mouse.wheel(0, 5000)
+
+            await page.wait_for_timeout(2000)
+
+        await page.screenshot(
+            path="after_scroll.png",
+            full_page=True
+        )
+
+        # ====================================================
+        # HTML APRES SCROLL
+        # ====================================================
+
+        sep("HTML AFTER SCROLL")
+
+        html2 = await page.content()
+
+        save("after_scroll.html", html2)
+
+        print("html2 size =", len(html2))
+
+        # ====================================================
+        # RECHECK COUNTS
+        # ====================================================
+
+        sep("COUNTS AFTER SCROLL")
+
+        for sel in selectors:
+
+            try:
+
+                count = await page.locator(sel).count()
+
+                print(f"{sel:30} -> {count}")
+
+            except Exception as e:
+                print(sel, e)
+
+        # ====================================================
+        # NETWORK DEBUG
+        # ====================================================
+
+        sep("API CALLS")
+
+        print("api calls =", len(api_calls))
+
+        save(
+            "api_calls.json",
+            json.dumps(api_calls, indent=2)
+        )
+
+        for a in api_calls:
+            print(a)
+
+        # ====================================================
+        # BEAUTIFULSOUP ANALYSIS
+        # ====================================================
+
+        sep("BS4 ANALYSIS")
+
+        soup = BeautifulSoup(html2, "lxml")
+
+        all_divs = soup.find_all("div")
+
+        print("div count =", len(all_divs))
+
+        classes = {}
+
+        for d in all_divs:
+
+            cls = d.get("class")
+
+            if cls:
+
+                for c in cls:
+
+                    classes[c] = classes.get(c, 0) + 1
+
+        sorted_classes = sorted(
+            classes.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        save(
+            "classes.json",
+            json.dumps(sorted_classes, indent=2)
+        )
+
+        print("\nTOP CLASSES")
+
+        for c, n in sorted_classes[:200]:
+            print(n, c)
+
+        # ====================================================
+        # DETECTION TEXTE IMMOBILIER
+        # ====================================================
+
+        sep("IMMOBILIER DETECTION")
+
+        immobilier_patterns = [
+            r"\d+\s?€",
+            r"mise à prix",
+            r"adjudication",
+            r"appartement",
+            r"maison",
+            r"villa",
+            r"terrain",
+            r"local commercial",
+            r"immeuble",
+            r"m²",
+        ]
+
+        for pat in immobilier_patterns:
+
+            found = re.findall(
+                pat,
+                body_text,
+                flags=re.I
+            )
+
+            print("\nPATTERN =", pat)
+            print("COUNT =", len(found))
+
+            if found:
+                print(found[:20])
+
+        # ====================================================
+        # EXPORT DATAFRAME
+        # ====================================================
+
+        sep("DATAFRAME")
+
+        df = pd.DataFrame(potential)
+
+        print(df.head())
+
+        df.to_csv(
+            "potential_annonces.csv",
+            index=False
+        )
+
+        # ====================================================
+        # FIN
+        # ====================================================
+
+        sep("DONE")
+
+        print("""
+FILES GENERATED:
+- debug_full.png
+- debug_page.html
+- body_text.txt
+- frame_*.html
+- all_links.json
+- potential_links.json
+- after_scroll.png
+- after_scroll.html
+- api_calls.json
+- classes.json
+- potential_annonces.csv
+""")
 
         await browser.close()
 
-    # =====================================================
-    # DF
-    # =====================================================
 
-    print("")
-    print("================================================")
-    print("📦 DATAFRAME")
-    print("================================================")
-
-    df = pd.DataFrame(rows)
-
-    if len(df) > 0:
-
-        df = df.drop_duplicates(
-            subset=["url"]
-        )
-
-    print(df)
-
-    print("")
-    print(f"📦 TOTAL = {len(df)}")
-
-    return df
-
-
-# =========================================================
-# MAIN
-# =========================================================
-
-async def main():
-
-    try:
-
-        df = await scrape()
-
-        if len(df) > 0:
-
-            df.to_csv(
-
-                "avoventes.csv",
-
-                sep=";",
-
-                index=False,
-
-                encoding="utf-8-sig"
-            )
-
-            print("")
-            print("================================================")
-            print("✅ CSV SAVED")
-            print("================================================")
-
-        else:
-
-            print("")
-            print("================================================")
-            print("❌ NO ANNOUNCES")
-            print("================================================")
-
-    except Exception as e:
-
-        print("")
-        print("================================================")
-        print("❌ MAIN ERROR")
-        print("================================================")
-
-        print(e)
-
-        traceback.print_exc()
-
-
-# =========================================================
-# RUN
-# =========================================================
-
-if __name__ == "__main__":
-
-    asyncio.run(main())
+asyncio.run(main())
