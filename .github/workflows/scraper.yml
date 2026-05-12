@@ -90,6 +90,19 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python immonotaires.py
+
+        # =====================================================
+      # SCRIPT ENCHERES IMMONOTAIRES
+      # =====================================================
+
+      - name: Run Encheres Avoventes
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python avoventes.py
+      # =====================================================
+      
       # =====================================================
       # COMMIT HISTORIQUES
       # =====================================================
@@ -103,7 +116,8 @@ jobs:
           git add historique_ids.csv
           git add historique_immo.csv
           git add historique_immonotaires.csv
-
+          git add historique_avoventes.csv
+          
           git commit -m "update historiques" || echo "no changes"
 
           git pull --rebase
