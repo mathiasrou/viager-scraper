@@ -1,6 +1,7 @@
 # =========================================================
 # ENCHERES IMMO
-# VERSION DEFINITIVE SANS BLEU
+# VERSION PROPRE DEFINITIVE
+# HISTORIQUE FIXE
 # =========================================================
 
 import asyncio
@@ -391,23 +392,6 @@ async def scrape():
 
     seen = set()
 
-    if os.path.exists(HISTORY_FILE):
-
-        try:
-
-            old_df = pd.read_csv(
-                HISTORY_FILE,
-                sep=";"
-            )
-
-        except:
-
-            old_df = pd.DataFrame()
-
-    else:
-
-        old_df = pd.DataFrame()
-
     async with async_playwright() as p:
 
         browser = await p.chromium.launch(
@@ -485,6 +469,7 @@ async def scrape():
                     if annonce_url is None:
                         continue
 
+                    # STOP doublons scrape courant
                     if annonce_url in seen:
                         continue
 
@@ -557,52 +542,31 @@ async def scrape():
 
     df = pd.DataFrame(rows)
 
-    if len(old_df) > 0:
-
-        df = pd.concat(
-            [old_df, df],
-            ignore_index=True
-        )
-
-    if len(df) > 0:
-
-        df = df.drop_duplicates(
-            subset=["url"],
-            keep="first"
-        )
-
     return df
 
 
 # =========================================================
-# GEO
-# =========================================================
-# =========================================================
-# GEOLOCALISATION SIMPLE
+# GEOLOCALISATION
 # =========================================================
 
 def geolocate(df):
 
-    # lecture CSV
     geo = pd.read_csv(
         CSV_CP
     )
 
-    # garder uniquement les colonnes utiles
     geo = geo[[
         "code_postal",
         "latitude",
         "longitude"
     ]]
 
-    # renommage
     geo.columns = [
         "cp",
         "lat",
         "lon"
     ]
 
-    # conversion types
     geo["cp"] = (
         geo["cp"]
         .astype(str)
@@ -617,7 +581,6 @@ def geolocate(df):
         .str.strip()
     )
 
-    # merge coordonnées
     df = df.merge(
         geo,
         on="cp",
@@ -637,21 +600,20 @@ def geolocate(df):
 # CREATE MAP
 # =========================================================
 
-# =========================================================
-# SOLUTION DEFINITIVE :
-# LE BLEU VIENT DU CSS LEAFLET SUR DIVICON
-# IL FAUT SUPPRIMER COMPLETEMENT LE STYLE PAR DEFAUT
-# =========================================================
-
-# REMPLACE UNIQUEMENT LA FONCTION create_map()
-
 def create_map(df):
-    active_df = df[df["status"] != "terminee"].copy()
-    active_df = active_df.drop_duplicates(subset=["url"])
 
-    m = folium.Map(location=[46.5, 2.5], zoom_start=6, tiles="CartoDB positron")
+    active_df = df.copy()
 
-    # CSS anti-bleu
+    active_df = active_df.drop_duplicates(
+        subset=["url"]
+    )
+
+    m = folium.Map(
+        location=[46.5, 2.5],
+        zoom_start=6,
+        tiles="CartoDB positron"
+    )
+
     css = """
 <style>
 .leaflet-div-icon{
@@ -665,88 +627,68 @@ def create_map(df):
 }
 </style>
 """
-    m.get_root().html.add_child(folium.Element(css))
+
+    m.get_root().html.add_child(
+        folium.Element(css)
+    )
 
     for _, row in active_df.iterrows():
+
         try:
+
             if pd.isna(row["lat"]):
                 continue
 
-            prix = row["prix"]
-            if prix is None:
-                color = "#666666"
-            elif prix < 100000:
-                color = "#ff0000"
-            elif prix < 200000:
-                color = "#8000ff"
-            elif prix < 300000:
-                color = "#00aa00"
-            else:
-                color = "#666666"
+            color = marker_color(
+                row["prix"]
+            )
 
-            symbol = "€"
-            if row["type"] == "Appartement":
-                symbol = "🏢"
-            elif row["type"] == "Maison":
-                symbol = "🏠"
-            elif row["type"] == "Villa":
-                symbol = "🏡"
-            elif row["type"] == "Terrain":
-                symbol = "🌳"
-            elif row["type"] == "Immeuble":
-                symbol = "🏬"
+            symbol = marker_symbol(
+                row
+            )
 
-            if prix is not None and prix >= 400000:
-                symbol = f"{int(prix/100000)}€"
+            bottom = bottom_text(
+                row
+            )
 
-            bottom = ""
-            try:
-                if row["date_vente"]:
-                    d = datetime.strptime(row["date_vente"], "%d/%m/%Y")
-                    if row["status"] == "future":
-                        bottom = f"{d.day}/{d.month}"
-                    elif row["status"] == "en_cours":
-                        delta = (d - datetime.now()).days
-                        bottom = f"{delta}j"
-            except:
-                pass
+            popup = f"""
+<b>{row['type']}</b><br><br>
 
-            # POPUP - Sans aucune indentation au début des lignes
-            popup = """
-<b>{type}</b><br><br>
-💰 Prix : {prix} €<br>
-📐 Surface : {surface} m²<br>
-🚪 Pièces : {pieces}<br>
-🛏️ Chambres : {chambres}<br>
-📅 Vente : {date_vente}<br>
-📍 CP : {cp}<br><br>
-<a href="{url}" target="_blank">Voir annonce</a>
-""".format(
-    type=row['type'],
-    prix=row['prix'],
-    surface=row['surface'],
-    pieces=row['pieces'],
-    chambres=row['chambres'],
-    date_vente=row['date_vente'],
-    cp=row['cp'],
-    url=row['url']
-)
+💰 Prix : {row['prix']} €<br>
 
-            # HTML du marqueur - Même principe
-            html = """
+📐 Surface : {row['surface']} m²<br>
+
+🚪 Pièces : {row['pieces']}<br>
+
+🛏️ Chambres : {row['chambres']}<br>
+
+📅 Vente : {row['date_vente']}<br>
+
+📍 CP : {row['cp']}<br><br>
+
+<a href="{row['url']}" target="_blank">
+Voir annonce
+</a>
+"""
+
+            html = f"""
 <div style="width:42px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:transparent;">
     <div style="background:{color}; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; font-size:14px; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.4);">
         {symbol}
     </div>
+
     <div style="font-size:11px; font-weight:bold; color:black; background:white; padding:1px 4px; border-radius:6px; margin-top:2px; border:1px solid #999; white-space:nowrap;">
         {bottom}
     </div>
 </div>
-""".format(color=color, symbol=symbol, bottom=bottom)
+"""
 
             marker = folium.Marker(
                 location=[row["lat"], row["lon"]],
-                popup=folium.Popup(popup, max_width=350),
+                popup=folium.Popup(
+                    popup,
+                    max_width=350
+                ),
                 icon=DivIcon(
                     html=html,
                     class_name="my-div-icon",
@@ -754,14 +696,18 @@ def create_map(df):
                     icon_anchor=(21, 21)
                 )
             )
+
             marker.add_to(m)
 
         except Exception as e:
+
             print("❌ ERREUR MARKER")
             print(e)
 
     m.save(OUTPUT_MAP)
+
     print("✅ CARTE SAUVEGARDEE")
+
 
 # =========================================================
 # MAIN
@@ -775,37 +721,139 @@ async def main():
 
         df = await scrape()
 
-        print(f"📦 TOTAL = {len(df)}")
+        print(f"📦 SCRAPE = {len(df)}")
 
         if len(df) == 0:
+
+            send_telegram(
+                "❌ ENCHERES IMMO : aucune annonce scrapee"
+            )
+
             return
 
-        df.to_csv(
+        # =====================================================
+        # HISTORIQUE
+        # =====================================================
 
-            HISTORY_FILE,
+        if os.path.exists(HISTORY_FILE):
 
-            sep=";",
+            old_df = pd.read_csv(
+                HISTORY_FILE,
+                sep=";"
+            )
 
-            index=False,
+        else:
 
-            encoding="utf-8-sig"
+            old_df = pd.DataFrame()
 
+        if len(old_df) > 0:
+
+            old_urls = set(
+                old_df["url"]
+                .astype(str)
+            )
+
+        else:
+
+            old_urls = set()
+
+        # =====================================================
+        # NOUVELLES ANNONCES
+        # =====================================================
+
+        new_df = df[
+            ~df["url"]
+            .astype(str)
+            .isin(old_urls)
+        ].copy()
+
+        print(
+            f"🆕 NOUVELLES = {len(new_df)}"
         )
 
-        print("💾 HISTORIQUE")
+        # =====================================================
+        # SAVE HISTORIQUE
+        # =====================================================
 
-        df = geolocate(df)
+        combined = pd.concat(
+            [old_df, df],
+            ignore_index=True
+        )
+
+        combined = combined.drop_duplicates(
+            subset=["url"],
+            keep="first"
+        )
+
+        combined.to_csv(
+            HISTORY_FILE,
+            sep=";",
+            index=False,
+            encoding="utf-8-sig"
+        )
+
+        print("💾 HISTORIQUE OK")
+
+        # =====================================================
+        # AUCUNE NOUVEAUTE
+        # =====================================================
+
+        if len(new_df) == 0:
+
+            send_telegram(
+                "😴 ENCHERES IMMO : aucune nouvelle annonce"
+            )
+
+            return
+
+        # =====================================================
+        # GEO
+        # =====================================================
+
+        new_df = geolocate(new_df)
 
         print("📍 GEO OK")
 
-        create_map(df)
+        # =====================================================
+        # CARTE
+        # =====================================================
+
+        create_map(new_df)
 
         send_file(OUTPUT_MAP)
 
+        # =====================================================
+        # TELEGRAM
+        # =====================================================
+
         send_telegram(
-            f"✅ ENCHERES IMMO\n"
-            f"{len(df)} annonces"
+            f"🔥 ENCHERES IMMO\n"
+            f"{len(new_df)} nouvelles annonces"
         )
+
+        for _, row in new_df.iterrows():
+
+            msg = ""
+
+            msg += "🏠 ENCHERE IMMO\n\n"
+
+            msg += f"📍 Type : {row.get('type')}\n"
+
+            msg += f"💰 Prix : {row.get('prix')} €\n"
+
+            msg += f"📐 Surface : {row.get('surface')} m²\n"
+
+            msg += f"🚪 Pièces : {row.get('pieces')}\n"
+
+            msg += f"🛏️ Chambres : {row.get('chambres')}\n"
+
+            msg += f"📍 CP : {row.get('cp')}\n"
+
+            msg += f"📅 Vente : {row.get('date_vente')}\n\n"
+
+            msg += f"🔗 {row['url']}"
+
+            send_telegram(msg)
 
         print("✅ FIN")
 
