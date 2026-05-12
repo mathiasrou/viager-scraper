@@ -1,6 +1,6 @@
 # =========================================================
 # AVOVENTES SCRAPER
-# VERSION COMPLETE GITHUB
+# DEBUG MAXIMAL
 # =========================================================
 
 import asyncio
@@ -23,55 +23,37 @@ BASE_URL = "https://avoventes.fr/recherche/toutes"
 
 CSV_CP = "base-officielle-codes-postaux.csv"
 
-OUTPUT_MAP = "carte_avoventes.html"
+HISTORY_FILE = "historique_avoventes.csv"
 
-OUTPUT_CSV = "historique_avoventes.csv"
+OUTPUT_MAP = "carte_avoventes.html"
 
 
 # =========================================================
 # TELEGRAM
 # =========================================================
 
-def send_telegram(msg):
+def send_telegram(message):
 
     token = os.getenv("TELEGRAM_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
     if not token or not chat_id:
+        print("❌ TELEGRAM NON CONFIGURE")
         return
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
     requests.post(
+
         url,
+
         data={
+
             "chat_id": chat_id,
-            "text": msg
+            "text": message
+
         }
     )
-
-
-def send_file(path):
-
-    token = os.getenv("TELEGRAM_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-    if not token or not chat_id:
-        return
-
-    url = f"https://api.telegram.org/bot{token}/sendDocument"
-
-    with open(path, "rb") as f:
-
-        requests.post(
-            url,
-            data={
-                "chat_id": chat_id
-            },
-            files={
-                "document": f
-            }
-        )
 
 
 # =========================================================
@@ -90,11 +72,7 @@ def clean(txt):
     txt = txt.replace("\xa0", " ")
     txt = txt.replace("\u202f", " ")
 
-    txt = re.sub(
-        r"\s+",
-        " ",
-        txt
-    )
+    txt = re.sub(r"\s+", " ", txt)
 
     return txt.strip()
 
@@ -111,7 +89,7 @@ def detect_type(txt):
         return "Appartement"
 
     if "studio" in t:
-        return "Appartement"
+        return "Studio"
 
     if "maison" in t:
         return "Maison"
@@ -125,14 +103,14 @@ def detect_type(txt):
     if "immeuble" in t:
         return "Immeuble"
 
-    if "atelier" in t:
-        return "Atelier"
+    if "garage" in t:
+        return "Garage"
 
     return "Autre"
 
 
 # =========================================================
-# EXTRACTIONS
+# PRIX
 # =========================================================
 
 def extract_price(txt):
@@ -148,17 +126,14 @@ def extract_price(txt):
 
         for m in matches:
 
-            m = re.sub(
-                r"\s+",
-                "",
-                m
-            )
+            m = re.sub(r"\s+", "", m)
 
             if m.isdigit():
 
                 v = int(m)
 
                 if 1000 <= v <= 100000000:
+
                     vals.append(v)
 
         if len(vals) == 0:
@@ -169,6 +144,10 @@ def extract_price(txt):
     except:
         return None
 
+
+# =========================================================
+# CP
+# =========================================================
 
 def extract_cp(txt):
 
@@ -194,6 +173,11 @@ def extract_cp(txt):
 
 def geolocate(df):
 
+    print("")
+    print("================================================")
+    print("📍 GEOLOCALISATION")
+    print("================================================")
+
     geo = pd.read_csv(CSV_CP)
 
     geo = geo[[
@@ -208,18 +192,13 @@ def geolocate(df):
         "lon"
     ]
 
-    geo["cp"] = (
-        geo["cp"]
-        .astype(str)
-        .str.strip()
-    )
+    geo["cp"] = geo["cp"].astype(str)
 
     df["cp"] = (
         df["cp"]
         .fillna("")
         .astype(str)
         .str.replace(".0", "", regex=False)
-        .str.strip()
     )
 
     df = df.merge(
@@ -228,14 +207,7 @@ def geolocate(df):
         how="left"
     )
 
-    print("")
-    print("================================================")
-    print("📍 GEOLOCALISATION")
-    print("================================================")
-
-    print(
-        f"📍 GEO OK = {df['lat'].notna().sum()}"
-    )
+    print(f"📍 GEO OK = {df['lat'].notna().sum()}")
 
     return df
 
@@ -246,24 +218,14 @@ def geolocate(df):
 
 def create_map(df):
 
+    print("")
+    print("================================================")
+    print("🗺️ CREATION CARTE")
+    print("================================================")
+
     m = folium.Map(
         location=[46.5, 2.5],
-        zoom_start=6,
-        tiles="CartoDB positron"
-    )
-
-    css = """
-<style>
-.leaflet-div-icon{
-    background:transparent !important;
-    border:none !important;
-    box-shadow:none !important;
-}
-</style>
-"""
-
-    m.get_root().html.add_child(
-        folium.Element(css)
+        zoom_start=6
     )
 
     for _, row in df.iterrows():
@@ -285,16 +247,6 @@ Voir annonce
 </a>
 """
 
-            html = """
-<div style="
-background:red;
-width:18px;
-height:18px;
-border-radius:50%;
-border:2px solid white;
-"></div>
-"""
-
             marker = folium.Marker(
 
                 location=[
@@ -302,22 +254,15 @@ border:2px solid white;
                     row["lon"]
                 ],
 
-                popup=folium.Popup(
-                    popup,
-                    max_width=350
-                ),
+                popup=popup
 
-                icon=DivIcon(
-                    html=html,
-                    icon_size=(18, 18),
-                    icon_anchor=(9, 9)
-                )
             )
 
             marker.add_to(m)
 
         except Exception as e:
 
+            print("❌ ERREUR MARKER")
             print(e)
 
     m.save(OUTPUT_MAP)
@@ -337,69 +282,94 @@ async def scrape():
 
     print("")
     print("================================================")
-    print("🌐 OUVERTURE")
+    print("🚀 DEBUT SCRAPE AVOVENTES")
     print("================================================")
 
     async with async_playwright() as p:
+
+        # =================================================
+        # BROWSER
+        # =================================================
+
+        print("")
+        print("================================================")
+        print("🌐 OUVERTURE NAVIGATEUR")
+        print("================================================")
 
         browser = await p.chromium.launch(
 
             headless=False,
 
-            slow_mo=50,
-
             args=[
 
-                "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
                 "--disable-dev-shm-usage"
 
             ]
         )
 
+        # =================================================
+        # CONTEXT
+        # =================================================
+
+        print("")
+        print("================================================")
+        print("🧠 CREATION CONTEXT")
+        print("================================================")
+
         context = await browser.new_context(
 
             viewport={
-                "width": 1366,
+                "width": 1600,
                 "height": 900
             },
 
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-
             locale="fr-FR",
 
-            timezone_id="Europe/Paris"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         )
+
+        # =================================================
+        # PAGE
+        # =================================================
+
+        print("")
+        print("================================================")
+        print("📄 CREATION PAGE")
+        print("================================================")
 
         page = await context.new_page()
 
-        # =====================================================
-        # ANTI DETECTION
-        # =====================================================
+        # =================================================
+        # OPEN URL
+        # =================================================
 
-        await page.add_init_script("""
+        print("")
+        print("================================================")
+        print("🌐 OUVERTURE URL")
+        print("================================================")
 
-Object.defineProperty(navigator, 'webdriver', {
-    get: () => undefined
-})
-
-""")
-
-        # =====================================================
-        # OPEN
-        # =====================================================
+        print(BASE_URL)
 
         await page.goto(
             BASE_URL,
-            wait_until="networkidle",
             timeout=120000
         )
 
-        await page.wait_for_timeout(8000)
+        # =================================================
+        # WAIT
+        # =================================================
 
-        # =====================================================
-        # COOKIE
-        # =====================================================
+        print("")
+        print("================================================")
+        print("⏳ ATTENTE CHARGEMENT")
+        print("================================================")
+
+        await page.wait_for_timeout(10000)
+
+        # =================================================
+        # COOKIES
+        # =================================================
 
         print("")
         print("================================================")
@@ -408,19 +378,42 @@ Object.defineProperty(navigator, 'webdriver', {
 
         try:
 
-            await page.locator(
-                "button:has-text('Accepter')"
-            ).click(timeout=5000)
+            buttons = [
 
-            print("🍪 COOKIE OK")
+                "button:has-text('Accepter')",
+                "button:has-text('Tout accepter')",
+                "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll"
 
-        except:
+            ]
 
-            print("⚠️ PAS DE POPUP COOKIE")
+            clicked = False
 
-        # =====================================================
+            for b in buttons:
+
+                try:
+
+                    await page.locator(b).click(timeout=3000)
+
+                    print(f"✅ COOKIE CLICK : {b}")
+
+                    clicked = True
+
+                    break
+
+                except:
+                    pass
+
+            if not clicked:
+                print("⚠️ PAS DE POPUP COOKIE")
+
+        except Exception as e:
+
+            print("❌ ERREUR COOKIE")
+            print(e)
+
+        # =================================================
         # SCROLL
-        # =====================================================
+        # =================================================
 
         print("")
         print("================================================")
@@ -429,15 +422,35 @@ Object.defineProperty(navigator, 'webdriver', {
 
         for i in range(15):
 
-            print(f"🖱️ {i+1}/15")
+            print(f"🖱️ SCROLL {i+1}/15")
 
-            await page.mouse.wheel(0, 2500)
+            await page.evaluate("""
 
-            await page.wait_for_timeout(2000)
+window.scrollBy(
+    0,
+    window.innerHeight
+)
 
-        # =====================================================
+""")
+
+            await page.wait_for_timeout(2500)
+
+        # =================================================
+        # END PAGE
+        # =================================================
+
+        print("")
+        print("================================================")
+        print("🔚 FIN PAGE")
+        print("================================================")
+
+        await page.keyboard.press("End")
+
+        await page.wait_for_timeout(5000)
+
+        # =================================================
         # SCREENSHOT
-        # =====================================================
+        # =================================================
 
         print("")
         print("================================================")
@@ -445,15 +458,17 @@ Object.defineProperty(navigator, 'webdriver', {
         print("================================================")
 
         await page.screenshot(
+
             path="debug_avoventes.png",
             full_page=True
+
         )
 
         print("✅ SCREENSHOT SAUVEGARDE")
 
-        # =====================================================
+        # =================================================
         # HTML
-        # =====================================================
+        # =================================================
 
         print("")
         print("================================================")
@@ -472,63 +487,141 @@ Object.defineProperty(navigator, 'webdriver', {
 
         print("✅ HTML SAUVEGARDE")
 
-        # =====================================================
-        # EXTRACTION
-        # =====================================================
+        # =================================================
+        # LINKS
+        # =================================================
 
         print("")
         print("================================================")
-        print("🔗 EXTRACTION")
+        print("🔗 EXTRACTION LINKS")
         print("================================================")
 
-        cards = page.locator(
-            "a[href*='/vente/']"
-        )
+        links = await page.locator("a").evaluate_all("""
 
-        count = await cards.count()
+els => els.map(e => ({
 
-        print(f"🧩 TOTAL ANNONCES = {count}")
+    href: e.href || "",
+    text: e.innerText || ""
 
-        # =====================================================
-        # LOOP
-        # =====================================================
+}))
 
-        for i in range(count):
+""")
+
+        print(f"🔗 TOTAL LINKS = {len(links)}")
+
+        # =================================================
+        # LOOP LINKS
+        # =================================================
+
+        for i, item in enumerate(links):
 
             try:
 
-                print("-" * 60)
+                print("")
+                print("------------------------------------------------")
+                print(f"🔎 LINK {i+1}/{len(links)}")
+                print("------------------------------------------------")
 
-                el = cards.nth(i)
+                url = clean(item["href"])
+                txt = clean(item["text"])
 
-                url = await el.get_attribute("href")
+                print(f"🌐 URL = {url[:120]}")
+                print(f"📝 TXT = {txt[:200]}")
 
-                txt = clean(
-                    await el.inner_text()
-                )
-
-                print(txt[:500])
+                # =========================================
+                # URL VIDE
+                # =========================================
 
                 if not url:
+
+                    print("⛔ URL VIDE")
+
                     continue
 
-                if "/vente/" not in url:
+                # =========================================
+                # DOMAIN
+                # =========================================
+
+                if "avoventes.fr" not in url:
+
+                    print("⛔ DOMAINE EXCLU")
+
                     continue
 
-                if not url.startswith("http"):
+                # =========================================
+                # BAD URLS
+                # =========================================
 
-                    url = (
-                        "https://avoventes.fr"
-                        + url
-                    )
+                bad = [
+
+                    "facebook",
+                    "twitter",
+                    "linkedin",
+                    "instagram",
+                    "friendlycaptcha",
+                    "/contact",
+                    "/mentions",
+                    "/politique",
+                    "/recherche"
+
+                ]
+
+                if any(x in url.lower() for x in bad):
+
+                    print("⛔ URL FILTREE")
+
+                    continue
+
+                # =========================================
+                # TEXTE
+                # =========================================
+
+                txt_low = txt.lower()
+
+                keywords = [
+
+                    "appartement",
+                    "maison",
+                    "villa",
+                    "terrain",
+                    "immeuble",
+                    "studio",
+                    "garage",
+                    "local"
+
+                ]
+
+                if not any(k in txt_low for k in keywords):
+
+                    print("⛔ PAS MOT CLE")
+
+                    continue
+
+                # =========================================
+                # LONGUEUR
+                # =========================================
+
+                if len(txt) < 40:
+
+                    print("⛔ TEXTE TROP COURT")
+
+                    continue
+
+                # =========================================
+                # DUPLICATE
+                # =========================================
 
                 if url in seen:
-                    continue
 
-                if len(txt) < 20:
+                    print("⛔ DUPLICATE")
+
                     continue
 
                 seen.add(url)
+
+                # =========================================
+                # ROW
+                # =========================================
 
                 row = {
 
@@ -540,26 +633,44 @@ Object.defineProperty(navigator, 'webdriver', {
 
                     "type": detect_type(txt),
 
-                    "txt": txt
+                    "txt": txt[:3000]
 
                 }
 
                 rows.append(row)
 
                 print("")
-                print("✅ ANNONCE")
-                print(f"TYPE = {row['type']}")
-                print(f"PRIX = {row['prix']}")
-                print(f"CP = {row['cp']}")
-                print(f"URL = {row['url']}")
+                print("✅ ANNONCE VALIDEE")
+                print(f"🏠 TYPE = {row['type']}")
+                print(f"💰 PRIX = {row['prix']}")
+                print(f"📍 CP = {row['cp']}")
+                print(f"🌐 URL = {row['url']}")
 
             except Exception as e:
 
                 print("")
-                print("❌ ERREUR")
+                print("❌ ERREUR LINK")
                 print(e)
 
+        # =================================================
+        # CLOSE
+        # =================================================
+
+        print("")
+        print("================================================")
+        print("❎ FERMETURE NAVIGATEUR")
+        print("================================================")
+
         await browser.close()
+
+    # =====================================================
+    # DF
+    # =====================================================
+
+    print("")
+    print("================================================")
+    print("📦 DATAFRAME")
+    print("================================================")
 
     df = pd.DataFrame(rows)
 
@@ -569,13 +680,9 @@ Object.defineProperty(navigator, 'webdriver', {
             subset=["url"]
         )
 
-    print("")
-    print("================================================")
-    print("📦 RESULTAT")
-    print("================================================")
-
     print(df.head())
 
+    print("")
     print(f"📦 TOTAL = {len(df)}")
 
     return df
@@ -589,7 +696,16 @@ async def main():
 
     try:
 
+        print("")
+        print("================================================")
+        print("🚀 MAIN")
+        print("================================================")
+
         df = await scrape()
+
+        # =================================================
+        # EMPTY
+        # =================================================
 
         if len(df) == 0:
 
@@ -604,36 +720,52 @@ async def main():
 
             return
 
-        # =====================================================
-        # SAVE CSV
-        # =====================================================
+        # =================================================
+        # CSV
+        # =================================================
+
+        print("")
+        print("================================================")
+        print("💾 CSV")
+        print("================================================")
 
         df.to_csv(
-            OUTPUT_CSV,
+
+            HISTORY_FILE,
+
             sep=";",
+
             index=False,
+
             encoding="utf-8-sig"
         )
 
-        print("✅ CSV")
+        print("✅ CSV SAUVEGARDE")
 
-        # =====================================================
+        # =================================================
         # GEO
-        # =====================================================
+        # =================================================
 
         df = geolocate(df)
 
-        # =====================================================
+        # =================================================
         # MAP
-        # =====================================================
+        # =================================================
 
         create_map(df)
 
-        send_file(OUTPUT_MAP)
+        # =================================================
+        # TELEGRAM
+        # =================================================
 
         send_telegram(
             f"✅ AVOVENTES\n{len(df)} annonces"
         )
+
+        print("")
+        print("================================================")
+        print("✅ FIN")
+        print("================================================")
 
     except Exception as e:
 
