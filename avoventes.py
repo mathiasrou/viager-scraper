@@ -1,59 +1,16 @@
 # =========================================================
 # AVOVENTES SCRAPER
-# DEBUG MAXIMAL
+# ULTRA DEBUG VERSION
 # =========================================================
 
 import asyncio
 import pandas as pd
 import re
-import folium
 import traceback
-import os
-import requests
-
 from playwright.async_api import async_playwright
-from folium.features import DivIcon
 
 
-# =========================================================
-# CONFIG
-# =========================================================
-
-BASE_URL = "https://avoventes.fr/recherche/toutes"
-
-CSV_CP = "base-officielle-codes-postaux.csv"
-
-HISTORY_FILE = "historique_avoventes.csv"
-
-OUTPUT_MAP = "carte_avoventes.html"
-
-
-# =========================================================
-# TELEGRAM
-# =========================================================
-
-def send_telegram(message):
-
-    token = os.getenv("TELEGRAM_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-    if not token or not chat_id:
-        print("❌ TELEGRAM NON CONFIGURE")
-        return
-
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-
-    requests.post(
-
-        url,
-
-        data={
-
-            "chat_id": chat_id,
-            "text": message
-
-        }
-    )
+URL = "https://avoventes.fr/recherche/toutes"
 
 
 # =========================================================
@@ -78,39 +35,7 @@ def clean(txt):
 
 
 # =========================================================
-# TYPE
-# =========================================================
-
-def detect_type(txt):
-
-    t = txt.lower()
-
-    if "appartement" in t:
-        return "Appartement"
-
-    if "studio" in t:
-        return "Studio"
-
-    if "maison" in t:
-        return "Maison"
-
-    if "villa" in t:
-        return "Villa"
-
-    if "terrain" in t:
-        return "Terrain"
-
-    if "immeuble" in t:
-        return "Immeuble"
-
-    if "garage" in t:
-        return "Garage"
-
-    return "Autre"
-
-
-# =========================================================
-# PRIX
+# PRICE
 # =========================================================
 
 def extract_price(txt):
@@ -168,110 +93,86 @@ def extract_cp(txt):
 
 
 # =========================================================
-# GEO
+# TYPE
 # =========================================================
 
-def geolocate(df):
+def detect_type(txt):
+
+    t = txt.lower()
+
+    if "appartement" in t:
+        return "Appartement"
+
+    if "maison" in t:
+        return "Maison"
+
+    if "villa" in t:
+        return "Villa"
+
+    if "terrain" in t:
+        return "Terrain"
+
+    if "immeuble" in t:
+        return "Immeuble"
+
+    if "studio" in t:
+        return "Studio"
+
+    if "garage" in t:
+        return "Garage"
+
+    return "Autre"
+
+
+# =========================================================
+# DEBUG ELEMENT
+# =========================================================
+
+async def debug_selector(page, selector):
 
     print("")
     print("================================================")
-    print("📍 GEOLOCALISATION")
+    print(f"🔍 SELECTOR DEBUG : {selector}")
     print("================================================")
 
-    geo = pd.read_csv(CSV_CP)
+    try:
 
-    geo = geo[[
-        "code_postal",
-        "latitude",
-        "longitude"
-    ]]
+        count = await page.locator(selector).count()
 
-    geo.columns = [
-        "cp",
-        "lat",
-        "lon"
-    ]
+        print(f"🧩 COUNT = {count}")
 
-    geo["cp"] = geo["cp"].astype(str)
+        if count > 0:
 
-    df["cp"] = (
-        df["cp"]
-        .fillna("")
-        .astype(str)
-        .str.replace(".0", "", regex=False)
-    )
+            for i in range(min(count, 5)):
 
-    df = df.merge(
-        geo,
-        on="cp",
-        how="left"
-    )
+                el = page.locator(selector).nth(i)
 
-    print(f"📍 GEO OK = {df['lat'].notna().sum()}")
+                txt = clean(
+                    await el.inner_text()
+                )
 
-    return df
+                html = clean(
+                    await el.inner_html()
+                )
+
+                print("")
+                print(f"---------- ELEMENT {i+1} ----------")
+
+                print("📝 TEXT:")
+                print(txt[:1000])
+
+                print("")
+                print("💾 HTML:")
+                print(html[:1000])
+
+    except Exception as e:
+
+        print("❌ ERREUR SELECTOR")
+        print(e)
 
 
 # =========================================================
-# MAP
-# =========================================================
-
-def create_map(df):
-
-    print("")
-    print("================================================")
-    print("🗺️ CREATION CARTE")
-    print("================================================")
-
-    m = folium.Map(
-        location=[46.5, 2.5],
-        zoom_start=6
-    )
-
-    for _, row in df.iterrows():
-
-        try:
-
-            if pd.isna(row["lat"]):
-                continue
-
-            popup = f"""
-<b>{row['type']}</b><br><br>
-
-💰 Prix : {row['prix']} €<br>
-
-📍 CP : {row['cp']}<br><br>
-
-<a href="{row['url']}" target="_blank">
-Voir annonce
-</a>
-"""
-
-            marker = folium.Marker(
-
-                location=[
-                    row["lat"],
-                    row["lon"]
-                ],
-
-                popup=popup
-
-            )
-
-            marker.add_to(m)
-
-        except Exception as e:
-
-            print("❌ ERREUR MARKER")
-            print(e)
-
-    m.save(OUTPUT_MAP)
-
-    print("✅ CARTE SAUVEGARDEE")
-
-
-# =========================================================
-# SCRAPE
+# MAIN SCRAPE
 # =========================================================
 
 async def scrape():
@@ -282,7 +183,7 @@ async def scrape():
 
     print("")
     print("================================================")
-    print("🚀 DEBUT SCRAPE AVOVENTES")
+    print("🚀 START")
     print("================================================")
 
     async with async_playwright() as p:
@@ -293,7 +194,7 @@ async def scrape():
 
         print("")
         print("================================================")
-        print("🌐 OUVERTURE NAVIGATEUR")
+        print("🌐 OPEN BROWSER")
         print("================================================")
 
         browser = await p.chromium.launch(
@@ -314,14 +215,14 @@ async def scrape():
 
         print("")
         print("================================================")
-        print("🧠 CREATION CONTEXT")
+        print("🧠 CONTEXT")
         print("================================================")
 
         context = await browser.new_context(
 
             viewport={
-                "width": 1600,
-                "height": 900
+                "width": 1800,
+                "height": 1200
             },
 
             locale="fr-FR",
@@ -333,27 +234,118 @@ async def scrape():
         # PAGE
         # =================================================
 
-        print("")
-        print("================================================")
-        print("📄 CREATION PAGE")
-        print("================================================")
-
         page = await context.new_page()
 
         # =================================================
-        # OPEN URL
+        # REQUESTS
+        # =================================================
+
+        async def log_request(request):
+
+            try:
+
+                url = request.url
+
+                if any(x in url.lower() for x in [
+
+                    "api",
+                    "graphql",
+                    "json",
+                    "search",
+                    "vente",
+                    "annonce"
+
+                ]):
+
+                    print("")
+                    print("================================================")
+                    print("📡 REQUEST")
+                    print("================================================")
+
+                    print(url)
+
+            except:
+                pass
+
+        page.on(
+            "request",
+            log_request
+        )
+
+        # =================================================
+        # RESPONSE
+        # =================================================
+
+        async def log_response(response):
+
+            try:
+
+                url = response.url
+
+                if any(x in url.lower() for x in [
+
+                    "api",
+                    "graphql",
+                    "json",
+                    "search",
+                    "vente",
+                    "annonce"
+
+                ]):
+
+                    print("")
+                    print("================================================")
+                    print("📥 RESPONSE")
+                    print("================================================")
+
+                    print(url)
+
+                    ct = response.headers.get(
+                        "content-type",
+                        ""
+                    )
+
+                    print(f"CONTENT TYPE = {ct}")
+
+                    if "json" in ct:
+
+                        try:
+
+                            data = await response.text()
+
+                            print("")
+                            print("📦 JSON:")
+                            print(data[:3000])
+
+                        except:
+                            pass
+
+            except:
+                pass
+
+        page.on(
+            "response",
+            log_response
+        )
+
+        # =================================================
+        # OPEN
         # =================================================
 
         print("")
         print("================================================")
-        print("🌐 OUVERTURE URL")
+        print("🌐 OPEN URL")
         print("================================================")
 
-        print(BASE_URL)
+        print(URL)
 
         await page.goto(
-            BASE_URL,
-            timeout=120000
+
+            URL,
+
+            timeout=120000,
+
+            wait_until="networkidle"
         )
 
         # =================================================
@@ -362,54 +354,68 @@ async def scrape():
 
         print("")
         print("================================================")
-        print("⏳ ATTENTE CHARGEMENT")
+        print("⏳ WAIT")
         print("================================================")
 
-        await page.wait_for_timeout(10000)
+        await page.wait_for_timeout(8000)
 
         # =================================================
-        # COOKIES
+        # COOKIE
         # =================================================
 
         print("")
         print("================================================")
-        print("🍪 COOKIES")
+        print("🍪 COOKIE")
         print("================================================")
 
-        try:
+        buttons = [
 
-            buttons = [
+            "button:has-text('Tout accepter')",
+            "button:has-text('Accepter')",
+            "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll"
 
-                "button:has-text('Accepter')",
-                "button:has-text('Tout accepter')",
-                "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll"
+        ]
 
-            ]
+        for b in buttons:
 
-            clicked = False
+            try:
 
-            for b in buttons:
+                await page.locator(b).click(timeout=3000)
 
-                try:
+                print(f"✅ CLICK COOKIE = {b}")
 
-                    await page.locator(b).click(timeout=3000)
+                break
 
-                    print(f"✅ COOKIE CLICK : {b}")
+            except:
+                pass
 
-                    clicked = True
+        await page.wait_for_timeout(4000)
 
-                    break
+        # =================================================
+        # PAGE TITLE
+        # =================================================
 
-                except:
-                    pass
+        print("")
+        print("================================================")
+        print("📄 PAGE INFO")
+        print("================================================")
 
-            if not clicked:
-                print("⚠️ PAS DE POPUP COOKIE")
+        print(await page.title())
 
-        except Exception as e:
+        # =================================================
+        # BODY
+        # =================================================
 
-            print("❌ ERREUR COOKIE")
-            print(e)
+        body = await page.locator("body").inner_text()
+
+        body = clean(body)
+
+        print("")
+        print("================================================")
+        print("📄 BODY PREVIEW")
+        print("================================================")
+
+        print(body[:5000])
 
         # =================================================
         # SCROLL
@@ -420,9 +426,9 @@ async def scrape():
         print("🖱️ SCROLL")
         print("================================================")
 
-        for i in range(15):
+        for i in range(20):
 
-            print(f"🖱️ SCROLL {i+1}/15")
+            print(f"🖱️ {i+1}/20")
 
             await page.evaluate("""
 
@@ -436,12 +442,12 @@ window.scrollBy(
             await page.wait_for_timeout(2500)
 
         # =================================================
-        # END PAGE
+        # END
         # =================================================
 
         print("")
         print("================================================")
-        print("🔚 FIN PAGE")
+        print("🔚 END")
         print("================================================")
 
         await page.keyboard.press("End")
@@ -460,11 +466,11 @@ window.scrollBy(
         await page.screenshot(
 
             path="debug_avoventes.png",
-            full_page=True
 
+            full_page=True
         )
 
-        print("✅ SCREENSHOT SAUVEGARDE")
+        print("✅ SCREENSHOT SAVED")
 
         # =================================================
         # HTML
@@ -472,7 +478,7 @@ window.scrollBy(
 
         print("")
         print("================================================")
-        print("💾 HTML")
+        print("💾 SAVE HTML")
         print("================================================")
 
         html = await page.content()
@@ -485,15 +491,47 @@ window.scrollBy(
 
             f.write(html)
 
-        print("✅ HTML SAUVEGARDE")
+        print("✅ HTML SAVED")
 
         # =================================================
-        # LINKS
+        # SELECTORS DEBUG
+        # =================================================
+
+        selectors = [
+
+            "article",
+            ".card",
+            ".item",
+            ".listing",
+            ".property",
+            ".vente",
+            ".annonce",
+            ".enchere",
+            ".search-result",
+            ".result",
+            ".grid-item",
+            ".tile",
+            "a",
+            "div",
+            "section",
+            "li"
+
+        ]
+
+        for s in selectors:
+
+            await debug_selector(
+                page,
+                s
+            )
+
+        # =================================================
+        # ALL LINKS
         # =================================================
 
         print("")
         print("================================================")
-        print("🔗 EXTRACTION LINKS")
+        print("🔗 ALL LINKS")
         print("================================================")
 
         links = await page.locator("a").evaluate_all("""
@@ -501,84 +539,91 @@ window.scrollBy(
 els => els.map(e => ({
 
     href: e.href || "",
-    text: e.innerText || ""
+    text: e.innerText || "",
+    html: e.innerHTML || ""
 
 }))
 
 """)
 
-        print(f"🔗 TOTAL LINKS = {len(links)}")
+        print(f"🔗 TOTAL = {len(links)}")
 
         # =================================================
         # LOOP LINKS
         # =================================================
 
-        for i, item in enumerate(links):
+        for idx, item in enumerate(links):
 
             try:
 
                 print("")
-                print("------------------------------------------------")
-                print(f"🔎 LINK {i+1}/{len(links)}")
-                print("------------------------------------------------")
+                print("################################################")
+                print(f"🔎 LINK {idx+1}/{len(links)}")
+                print("################################################")
 
                 url = clean(item["href"])
                 txt = clean(item["text"])
+                html = clean(item["html"])
 
-                print(f"🌐 URL = {url[:120]}")
-                print(f"📝 TXT = {txt[:200]}")
+                print("")
+                print("🌐 URL")
+                print(url)
+
+                print("")
+                print("📝 TEXT")
+                print(txt[:2000])
+
+                print("")
+                print("💾 HTML")
+                print(html[:2000])
 
                 # =========================================
-                # URL VIDE
-                # =========================================
-
-                if not url:
-
-                    print("⛔ URL VIDE")
-
-                    continue
-
-                # =========================================
-                # DOMAIN
+                # FILTER URL
                 # =========================================
 
                 if "avoventes.fr" not in url:
 
-                    print("⛔ DOMAINE EXCLU")
+                    print("⛔ BAD DOMAIN")
 
                     continue
 
                 # =========================================
-                # BAD URLS
+                # BAD LINKS
                 # =========================================
 
                 bad = [
 
+                    "#",
                     "facebook",
-                    "twitter",
                     "linkedin",
-                    "instagram",
+                    "twitter",
+                    "youtube",
+                    "mentions",
+                    "privacy",
+                    "conditions",
+                    "contact",
+                    "admin",
+                    "login",
                     "friendlycaptcha",
-                    "/contact",
-                    "/mentions",
-                    "/politique",
-                    "/recherche"
+                    "recherche/toutes"
 
                 ]
 
                 if any(x in url.lower() for x in bad):
 
-                    print("⛔ URL FILTREE")
+                    print("⛔ FILTER URL")
 
                     continue
 
                 # =========================================
-                # TEXTE
+                # KEYWORDS
                 # =========================================
 
-                txt_low = txt.lower()
+                combined = (
+                    txt + " " + html
+                ).lower()
 
-                keywords = [
+                kws = [
 
                     "appartement",
                     "maison",
@@ -591,19 +636,9 @@ els => els.map(e => ({
 
                 ]
 
-                if not any(k in txt_low for k in keywords):
+                if not any(k in combined for k in kws):
 
-                    print("⛔ PAS MOT CLE")
-
-                    continue
-
-                # =========================================
-                # LONGUEUR
-                # =========================================
-
-                if len(txt) < 40:
-
-                    print("⛔ TEXTE TROP COURT")
+                    print("⛔ NO KEYWORD")
 
                     continue
 
@@ -627,39 +662,32 @@ els => els.map(e => ({
 
                     "url": url,
 
-                    "prix": extract_price(txt),
+                    "type": detect_type(combined),
 
-                    "cp": extract_cp(txt),
+                    "prix": extract_price(combined),
 
-                    "type": detect_type(txt),
+                    "cp": extract_cp(combined),
 
-                    "txt": txt[:3000]
+                    "texte": combined[:5000]
 
                 }
 
                 rows.append(row)
 
                 print("")
-                print("✅ ANNONCE VALIDEE")
-                print(f"🏠 TYPE = {row['type']}")
-                print(f"💰 PRIX = {row['prix']}")
-                print(f"📍 CP = {row['cp']}")
-                print(f"🌐 URL = {row['url']}")
+                print("✅ VALID ANNOUNCE")
+
+                print(row)
 
             except Exception as e:
 
                 print("")
-                print("❌ ERREUR LINK")
+                print("❌ LINK ERROR")
                 print(e)
 
         # =================================================
         # CLOSE
         # =================================================
-
-        print("")
-        print("================================================")
-        print("❎ FERMETURE NAVIGATEUR")
-        print("================================================")
 
         await browser.close()
 
@@ -680,7 +708,7 @@ els => els.map(e => ({
             subset=["url"]
         )
 
-    print(df.head())
+    print(df)
 
     print("")
     print(f"📦 TOTAL = {len(df)}")
@@ -696,91 +724,43 @@ async def main():
 
     try:
 
-        print("")
-        print("================================================")
-        print("🚀 MAIN")
-        print("================================================")
-
         df = await scrape()
 
-        # =================================================
-        # EMPTY
-        # =================================================
+        if len(df) > 0:
 
-        if len(df) == 0:
+            df.to_csv(
+
+                "avoventes.csv",
+
+                sep=";",
+
+                index=False,
+
+                encoding="utf-8-sig"
+            )
 
             print("")
             print("================================================")
-            print("❌ AUCUNE ANNONCE")
+            print("✅ CSV SAVED")
             print("================================================")
 
-            send_telegram(
-                "❌ AVOVENTES : aucune annonce"
-            )
+        else:
 
-            return
-
-        # =================================================
-        # CSV
-        # =================================================
-
-        print("")
-        print("================================================")
-        print("💾 CSV")
-        print("================================================")
-
-        df.to_csv(
-
-            HISTORY_FILE,
-
-            sep=";",
-
-            index=False,
-
-            encoding="utf-8-sig"
-        )
-
-        print("✅ CSV SAUVEGARDE")
-
-        # =================================================
-        # GEO
-        # =================================================
-
-        df = geolocate(df)
-
-        # =================================================
-        # MAP
-        # =================================================
-
-        create_map(df)
-
-        # =================================================
-        # TELEGRAM
-        # =================================================
-
-        send_telegram(
-            f"✅ AVOVENTES\n{len(df)} annonces"
-        )
-
-        print("")
-        print("================================================")
-        print("✅ FIN")
-        print("================================================")
+            print("")
+            print("================================================")
+            print("❌ NO ANNOUNCES")
+            print("================================================")
 
     except Exception as e:
 
         print("")
         print("================================================")
-        print("❌ ERREUR MAIN")
+        print("❌ MAIN ERROR")
         print("================================================")
 
         print(e)
 
         traceback.print_exc()
-
-        send_telegram(
-            f"❌ ERREUR AVOVENTES\n{e}"
-        )
 
 
 # =========================================================
