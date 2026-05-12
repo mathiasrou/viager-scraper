@@ -489,7 +489,7 @@ def create_map(valid_df, rejected_df):
 
         ).add_to(m)
 
-    m.save("carte.html")
+    m.save("carte_rene_costes.html")
 
 
 # =========================================================
@@ -666,7 +666,7 @@ async def main():
     else:
 
         send_telegram(
-            "😴 René Costes - pas de nouvelles annoncdes"
+            "😴 René Costes - pas de nouvelles annonces"
         )
 
     # =====================================================
