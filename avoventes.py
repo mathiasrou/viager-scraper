@@ -341,7 +341,7 @@ async def scrape():
 
         browser = await p.chromium.launch(
 
-            headless=True,
+            headless=False,
 
             args=[
 
