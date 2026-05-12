@@ -585,27 +585,39 @@ def geolocate(df):
         sep=";"
     )
 
+    # normalisation noms colonnes
     geo.columns = [
-        c.lower()
+        c.strip().lower()
         for c in geo.columns
     ]
 
+    print("COLONNES GEO =", geo.columns.tolist())
+
+    # sélection colonnes
     geo = geo[[
-        "Code_postal",
-        "Latitude",
-        "Longitude"
+        "code_postal",
+        "latitude",
+        "longitude"
     ]]
 
+    # renommage
     geo.columns = [
         "cp",
         "lat",
         "lon"
     ]
 
+    # conversions
     geo["cp"] = geo["cp"].astype(str)
 
-    df["cp"] = df["cp"].astype(str)
+    df["cp"] = (
+        df["cp"]
+        .fillna("")
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+    )
 
+    # merge
     df = df.merge(
         geo,
         on="cp",
