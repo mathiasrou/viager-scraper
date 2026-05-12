@@ -1,494 +1,594 @@
 # =========================================================
-# IMMONOTAIRES DEBUG EXTREME
-# TEST DE TOUTES LES SOLUTIONS ANTI-BLOCAGE
+# IMMO NOTAIRES ENCHERES
+# VERSION COMPLETE CORRIGEE
 # =========================================================
 
 import asyncio
-import random
+import pandas as pd
+import re
+import folium
 import traceback
 import os
+import requests
 
 from playwright.async_api import async_playwright
+from folium.features import DivIcon
 
 
 # =========================================================
-# URLS
+# CONFIG
 # =========================================================
 
-URLS = [
+BASE_URL = "https://immonotairesencheres.com/bien"
 
-    "https://immonotairesencheres.com",
-    "https://www.immonotairesencheres.com",
-    "https://immonotairesencheres.com/recherche",
-    "https://immonotairesencheres.com/bien"
+CSV_CP = "base-officielle-codes-postaux.csv"
 
-]
+HISTORY_FILE = "historique_immonotaires.csv"
+
+OUTPUT_MAP = "carte_immonotaires.html"
 
 
 # =========================================================
-# USER AGENTS
+# TELEGRAM
 # =========================================================
 
-USER_AGENTS = [
+def send_telegram(message):
 
-    # Chrome Windows
-    (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/136.0.0.0 Safari/537.36"
-    ),
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-    # Firefox Windows
-    (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) "
-        "Gecko/20100101 Firefox/136.0"
-    ),
+    if not token or not chat_id:
+        print("❌ TELEGRAM NON CONFIGURE")
+        return
 
-    # Edge
-    (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
-    ),
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
 
-    # Chrome Linux
-    (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/136.0.0.0 Safari/537.36"
+    requests.post(
+        url,
+        data={
+            "chat_id": chat_id,
+            "text": message
+        }
     )
 
-]
+
+def send_file(path):
+
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        return
+
+    url = f"https://api.telegram.org/bot{token}/sendDocument"
+
+    with open(path, "rb") as f:
+
+        requests.post(
+            url,
+            data={"chat_id": chat_id},
+            files={"document": f}
+        )
 
 
 # =========================================================
-# JS STEALTH
+# CLEAN
 # =========================================================
 
-STEALTH_JS = """
+def clean(txt):
 
-Object.defineProperty(navigator, 'webdriver', {
-    get: () => undefined
-});
+    if txt is None:
+        return ""
 
-window.chrome = {
-    runtime: {}
-};
+    txt = str(txt)
 
-Object.defineProperty(navigator, 'plugins', {
-    get: () => [1, 2, 3, 4, 5]
-});
+    txt = txt.replace("\n", " ")
+    txt = txt.replace("\t", " ")
+    txt = txt.replace("\xa0", " ")
+    txt = txt.replace("\u202f", " ")
 
-Object.defineProperty(navigator, 'languages', {
-    get: () => ['fr-FR', 'fr']
-});
+    txt = re.sub(
+        r"\s+",
+        " ",
+        txt
+    )
 
-Object.defineProperty(navigator, 'platform', {
-    get: () => 'Win32'
-});
-
-"""
+    return txt.strip()
 
 
 # =========================================================
-# TEST
+# TYPE
 # =========================================================
 
-async def test_combo(
-    playwright,
-    headless,
-    channel,
-    user_agent,
-    use_stealth,
-    url
-):
+def detect_type(txt):
 
-    browser = None
+    t = txt.lower()
+
+    if "appartement" in t:
+        return "Appartement"
+
+    if "studio" in t:
+        return "Appartement"
+
+    if "maison" in t:
+        return "Maison"
+
+    if "villa" in t:
+        return "Villa"
+
+    if "terrain" in t:
+        return "Terrain"
+
+    if "immeuble" in t:
+        return "Immeuble"
+
+    if "atelier" in t:
+        return "Atelier"
+
+    return "Autre"
+
+
+# =========================================================
+# EXTRACTIONS
+# =========================================================
+
+def extract_price(txt):
 
     try:
 
-        print("")
-        print("=" * 80)
-
-        print("🧪 TEST")
-
-        print(f"HEADLESS = {headless}")
-        print(f"CHANNEL = {channel}")
-        print(f"STEALTH = {use_stealth}")
-        print(f"URL = {url}")
-
-        print("=" * 80)
-
-        launch_args = [
-
-            "--disable-blink-features=AutomationControlled",
-            "--disable-dev-shm-usage",
-            "--no-sandbox",
-            "--disable-setuid-sandbox"
-
-        ]
-
-        # =====================================================
-        # BROWSER
-        # =====================================================
-
-        browser = await playwright.chromium.launch(
-
-            headless=headless,
-
-            channel=channel,
-
-            args=launch_args
-
+        matches = re.findall(
+            r"(\d[\d\s]{2,})\s?€",
+            txt
         )
 
-        # =====================================================
-        # CONTEXT
-        # =====================================================
+        vals = []
 
-        context = await browser.new_context(
+        for m in matches:
 
-            user_agent=user_agent,
-
-            locale="fr-FR",
-
-            timezone_id="Europe/Paris",
-
-            viewport={
-                "width": 1600,
-                "height": 1200
-            },
-
-            extra_http_headers={
-
-                "Accept-Language":
-                    "fr-FR,fr;q=0.9,en;q=0.8",
-
-                "Upgrade-Insecure-Requests":
-                    "1"
-
-            }
-
-        )
-
-        # =====================================================
-        # PAGE
-        # =====================================================
-
-        page = await context.new_page()
-
-        # =====================================================
-        # STEALTH
-        # =====================================================
-
-        if use_stealth:
-
-            await page.add_init_script(
-                STEALTH_JS
+            m = re.sub(
+                r"\s+",
+                "",
+                m
             )
 
-        # =====================================================
-        # LOGS
-        # =====================================================
+            if m.isdigit():
 
-        async def log_response(response):
+                v = int(m)
 
-            try:
+                if 1000 <= v <= 100000000:
+                    vals.append(v)
 
-                ct = response.headers.get(
-                    "content-type",
-                    ""
+        if len(vals) == 0:
+            return None
+
+        return min(vals)
+
+    except:
+        return None
+
+
+def extract_surface(txt):
+
+    try:
+
+        matches = re.findall(
+            r"(\d+(?:[.,]\d+)?)\s?M2",
+            txt,
+            re.I
+        )
+
+        vals = []
+
+        for m in matches:
+
+            vals.append(
+                float(
+                    m.replace(",", ".")
                 )
+            )
 
-                print("")
-                print("📡 RESPONSE")
-                print("URL =", response.url)
-                print("STATUS =", response.status)
-                print("TYPE =", ct)
+        if len(vals) == 0:
+            return None
 
-            except:
-                pass
+        return max(vals)
 
-        page.on(
-            "response",
-            log_response
+    except:
+        pass
+
+    return None
+
+
+def extract_cp(txt):
+
+    try:
+
+        m = re.findall(
+            r"\b(\d{5})\b",
+            txt
         )
 
-        # =====================================================
-        # WAIT RANDOM
-        # =====================================================
+        if len(m) > 0:
+            return m[0]
 
-        await page.wait_for_timeout(
-            random.randint(1000, 3000)
+    except:
+        pass
+
+    return None
+
+
+def extract_rooms(txt):
+
+    try:
+
+        m = re.search(
+            r"(\d+)\s*pi[eè]ce",
+            txt,
+            re.I
         )
 
-        # =====================================================
-        # GOTO
-        # =====================================================
+        if m:
+            return int(m.group(1))
 
-        print("")
-        print("🌐 OPEN")
+    except:
+        pass
 
-        response = await page.goto(
+    return None
 
-            url,
 
-            timeout=120000,
+# =========================================================
+# GEOLOCALISATION
+# =========================================================
 
-            wait_until="domcontentloaded"
+def geolocate(df):
 
+    geo = pd.read_csv(
+        CSV_CP
+    )
+
+    geo = geo[[
+        "code_postal",
+        "latitude",
+        "longitude"
+    ]]
+
+    geo.columns = [
+        "cp",
+        "lat",
+        "lon"
+    ]
+
+    geo["cp"] = (
+        geo["cp"]
+        .astype(str)
+        .str.strip()
+    )
+
+    df["cp"] = (
+        df["cp"]
+        .fillna("")
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.strip()
+    )
+
+    df = df.merge(
+        geo,
+        on="cp",
+        how="left"
+    )
+
+    print(
+        "📍 GEOLOCALISATION OK :",
+        df["lat"].notna().sum(),
+        "annonces"
+    )
+
+    return df
+
+
+# =========================================================
+# SCRAPE
+# =========================================================
+
+async def scrape():
+
+    rows = []
+
+    seen = set()
+
+    async with async_playwright() as p:
+
+        browser = await p.chromium.launch(
+            headless=True
         )
 
-        # =====================================================
-        # WAIT
-        # =====================================================
+        page = await browser.new_page()
 
-        await page.wait_for_timeout(
-            random.randint(5000, 10000)
-        )
+        page_num = 0
 
-        # =====================================================
-        # TITLE
-        # =====================================================
+        while True:
 
-        try:
-
-            title = await page.title()
-
-        except:
-
-            title = "ERROR"
-
-        print("")
-        print("📄 TITLE =", title)
-
-        # =====================================================
-        # URL
-        # =====================================================
-
-        print("🔗 FINAL URL =", page.url)
-
-        # =====================================================
-        # HTML SIZE
-        # =====================================================
-
-        try:
-
-            html = await page.content()
-
-            print("📦 HTML SIZE =", len(html))
-
-        except Exception as e:
-
-            print("❌ HTML ERROR")
-            print(e)
-
-            html = ""
-
-        # =====================================================
-        # BODY
-        # =====================================================
-
-        try:
-
-            body = await page.locator("body").inner_text()
+            url = (
+                f"{BASE_URL}?page={page_num}"
+            )
 
             print("")
-            print("📝 BODY SAMPLE")
-            print(body[:5000])
+            print("=" * 60)
+            print(f"📄 PAGE {page_num}")
+            print("=" * 60)
 
-        except Exception as e:
-
-            print("❌ BODY ERROR")
-            print(e)
-
-            body = ""
-
-        # =====================================================
-        # SCREENSHOT
-        # =====================================================
-
-        screenshot_name = (
-
-            f"debug_"
-            f"{'headless' if headless else 'headful'}_"
-            f"{channel}_"
-            f"{'stealth' if use_stealth else 'normal'}.png"
-        )
-
-        await page.screenshot(
-
-            path=screenshot_name,
-
-            full_page=True
-
-        )
-
-        print("")
-        print("📸 SCREENSHOT =", screenshot_name)
-
-        # =====================================================
-        # SAVE HTML
-        # =====================================================
-
-        html_name = (
-
-            f"debug_"
-            f"{'headless' if headless else 'headful'}_"
-            f"{channel}_"
-            f"{'stealth' if use_stealth else 'normal'}.html"
-        )
-
-        with open(
-            html_name,
-            "w",
-            encoding="utf-8"
-        ) as f:
-
-            f.write(html)
-
-        print("💾 HTML =", html_name)
-
-        # =====================================================
-        # DETECTION SUCCESS
-        # =====================================================
-
-        success = False
-
-        indicators = [
-
-            "encheres",
-            "vente",
-            "notaire",
-            "recherche",
-            "bien"
-
-        ]
-
-        low = body.lower()
-
-        for ind in indicators:
-
-            if ind in low:
-
-                success = True
-                break
-
-        # =====================================================
-        # 403
-        # =====================================================
-
-        forbidden = (
-
-            "403" in low
-            or "accès interdit" in low
-            or "forbidden" in low
-        )
-
-        print("")
-        print("🚨 403 =", forbidden)
-
-        print("✅ SUCCESS =", success)
-
-        # =====================================================
-        # LINKS
-        # =====================================================
-
-        try:
-
-            links = await page.query_selector_all("a")
-
-            print("🔗 LINKS =", len(links))
-
-            count = 0
-
-            for link in links[:20]:
-
-                try:
-
-                    href = await link.get_attribute("href")
-
-                    txt = await link.inner_text()
-
-                    print("LINK =", txt[:80], "|", href)
-
-                    count += 1
-
-                except:
-                    pass
-
-        except Exception as e:
-
-            print("❌ LINKS ERROR")
-            print(e)
-
-        # =====================================================
-        # ARTICLES
-        # =====================================================
-
-        selectors = [
-
-            "article",
-            ".card",
-            ".annonce",
-            ".property",
-            ".listing",
-            ".bien"
-
-        ]
-
-        print("")
-        print("🧩 SELECTORS")
-
-        for sel in selectors:
+            print(url)
 
             try:
 
-                els = await page.query_selector_all(sel)
-
-                print(sel, "=", len(els))
+                await page.goto(
+                    url,
+                    timeout=60000
+                )
 
             except Exception as e:
 
-                print(sel, "= ERROR")
+                print("❌ PAGE")
+                print(e)
 
-        # =====================================================
-        # RESULT
-        # =====================================================
+                break
 
-        if success and not forbidden:
+            await page.wait_for_timeout(5000)
 
-            print("")
-            print("🎉 SUCCESS POSSIBLE")
-            print("=" * 80)
+            articles = await page.query_selector_all(
+                "article.node-property"
+            )
 
-            return True
+            print(
+                f"🧩 ARTICLES = {len(articles)}"
+            )
 
-        print("")
-        print("❌ FAILED")
-        print("=" * 80)
+            if len(articles) == 0:
+                break
 
-        return False
+            count_before = len(rows)
 
-    except Exception as e:
+            for article in articles:
 
-        print("")
-        print("❌ EXCEPTION")
-        print(e)
+                try:
 
-        traceback.print_exc()
+                    txt = clean(
+                        await article.inner_text()
+                    )
 
-        return False
+                    if len(txt) < 20:
+                        continue
 
-    finally:
+                    link = await article.query_selector(
+                        "a.button"
+                    )
+
+                    if not link:
+                        continue
+
+                    href = await link.get_attribute(
+                        "href"
+                    )
+
+                    if not href:
+                        continue
+
+                    if href.startswith("/"):
+
+                        annonce_url = (
+                            "https://immonotairesencheres.com"
+                            + href
+                        )
+
+                    else:
+
+                        annonce_url = href
+
+                    if annonce_url in seen:
+                        continue
+
+                    seen.add(annonce_url)
+
+                    row = {
+
+                        "url": annonce_url,
+
+                        "txt": txt,
+
+                        "prix": extract_price(txt),
+
+                        "surface": extract_surface(txt),
+
+                        "cp": extract_cp(txt),
+
+                        "pieces": extract_rooms(txt),
+
+                        "type": detect_type(txt)
+
+                    }
+
+                    rows.append(row)
+
+                    print(
+                        f"✅ {row['type']} | "
+                        f"{row['prix']}€ | "
+                        f"{row['surface']}m²"
+                    )
+
+                except Exception as e:
+
+                    print("❌ ARTICLE")
+                    print(e)
+
+            if len(rows) == count_before:
+
+                print("⛔ FIN PAGINATION")
+                break
+
+            page_num += 1
+
+        await browser.close()
+
+    df = pd.DataFrame(rows)
+
+    return df
+
+
+# =========================================================
+# MAP
+# =========================================================
+
+def create_map(df):
+
+    m = folium.Map(
+        location=[46.5, 2.5],
+        zoom_start=6,
+        tiles="CartoDB positron"
+    )
+
+    css = """
+<style>
+.leaflet-div-icon{
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
+}
+.my-div-icon{
+    background:transparent !important;
+    border:none !important;
+}
+</style>
+"""
+
+    m.get_root().html.add_child(
+        folium.Element(css)
+    )
+
+    for _, row in df.iterrows():
 
         try:
 
-            if browser:
-                await browser.close()
+            if pd.isna(row["lat"]):
+                continue
 
-        except:
-            pass
+            prix = row["prix"]
+
+            if prix is None:
+
+                color = "#666666"
+
+            elif prix < 100000:
+
+                color = "#ff0000"
+
+            elif prix < 300000:
+
+                color = "#8000ff"
+
+            elif prix < 700000:
+
+                color = "#00aa00"
+
+            else:
+
+                color = "#222222"
+
+            symbol = "€"
+
+            if row["type"] == "Appartement":
+                symbol = "🏢"
+
+            elif row["type"] == "Maison":
+                symbol = "🏠"
+
+            elif row["type"] == "Villa":
+                symbol = "🏡"
+
+            elif row["type"] == "Terrain":
+                symbol = "🌳"
+
+            elif row["type"] == "Immeuble":
+                symbol = "🏬"
+
+            elif row["type"] == "Atelier":
+                symbol = "🏭"
+
+            popup = f"""
+<b>{row['type']}</b><br><br>
+
+💰 Prix : {row['prix']} €<br>
+
+📐 Surface : {row['surface']} m²<br>
+
+🚪 Pièces : {row['pieces']}<br>
+
+📍 CP : {row['cp']}<br><br>
+
+<a href="{row['url']}" target="_blank">
+Voir annonce
+</a>
+"""
+
+            html = f"""
+<div style="
+width:42px;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+background:transparent;
+">
+
+<div style="
+background:{color};
+width:38px;
+height:38px;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+color:white;
+font-weight:bold;
+font-size:14px;
+border:2px solid white;
+box-shadow:0 0 4px rgba(0,0,0,0.4);
+">
+{symbol}
+</div>
+
+</div>
+"""
+
+            marker = folium.Marker(
+
+                location=[
+                    row["lat"],
+                    row["lon"]
+                ],
+
+                popup=folium.Popup(
+                    popup,
+                    max_width=350
+                ),
+
+                icon=DivIcon(
+                    html=html,
+                    class_name="my-div-icon",
+                    icon_size=(42, 42),
+                    icon_anchor=(21, 21)
+                )
+            )
+
+            marker.add_to(m)
+
+        except Exception as e:
+
+            print("❌ MARKER")
+            print(e)
+
+    m.save(OUTPUT_MAP)
+
+    print("✅ CARTE SAUVEGARDEE")
 
 
 # =========================================================
@@ -497,108 +597,60 @@ async def test_combo(
 
 async def main():
 
-    print("")
-    print("=" * 80)
-    print("🚀 IMMONOTAIRES EXTREME DEBUG")
-    print("=" * 80)
+    try:
 
-    async with async_playwright() as p:
+        print("🚀 SCRAPING")
 
-        # =====================================================
-        # COMBOS
-        # =====================================================
+        df = await scrape()
 
-        combos = []
+        print("")
+        print(f"📦 TOTAL = {len(df)}")
 
-        for headless in [False, True]:
+        if len(df) == 0:
 
-            for channel in [
+            print("❌ AUCUNE ANNONCE")
 
-                "chrome",
-                None
+            return
 
-            ]:
+        df.to_csv(
 
-                for stealth in [
+            HISTORY_FILE,
 
-                    True,
-                    False
+            sep=";",
 
-                ]:
+            index=False,
 
-                    combos.append(
-                        (
-                            headless,
-                            channel,
-                            stealth
-                        )
-                    )
+            encoding="utf-8-sig"
 
-        # =====================================================
-        # LOOP
-        # =====================================================
+        )
 
-        for url in URLS:
+        print("💾 HISTORIQUE")
 
-            for ua in USER_AGENTS:
+        df = geolocate(df)
 
-                for combo in combos:
+        print("📍 GEO OK")
 
-                    headless, channel, stealth = combo
+        create_map(df)
 
-                    ok = await test_combo(
+        send_file(OUTPUT_MAP)
 
-                        playwright=p,
+        send_telegram(
+            f"✅ IMMO NOTAIRES\n"
+            f"{len(df)} annonces"
+        )
 
-                        headless=headless,
+        print("✅ FIN")
 
-                        channel=channel,
+    except Exception as e:
 
-                        user_agent=ua,
+        print("❌ MAIN")
+        print(e)
 
-                        use_stealth=stealth,
+        traceback.print_exc()
 
-                        url=url
-
-                    )
-
-                    # =================================================
-                    # STOP SI OK
-                    # =================================================
-
-                    if ok:
-
-                        print("")
-                        print("=" * 80)
-                        print("🎯 SOLUTION TROUVEE")
-                        print("=" * 80)
-
-                        print("URL =", url)
-
-                        print("HEADLESS =", headless)
-
-                        print("CHANNEL =", channel)
-
-                        print("STEALTH =", stealth)
-
-                        print("UA =", ua)
-
-                        print("=" * 80)
-
-                        return
-
-                    # =================================================
-                    # ATTENTE
-                    # =================================================
-
-                    await asyncio.sleep(
-                        random.randint(5, 15)
-                    )
-
-    print("")
-    print("=" * 80)
-    print("❌ AUCUNE SOLUTION")
-    print("=" * 80)
+        send_telegram(
+            f"❌ ERREUR\n{e}"
+        )
 
 
 # =========================================================
