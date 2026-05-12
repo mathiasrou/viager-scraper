@@ -1,6 +1,7 @@
 # =========================================================
 # AVOVENTES.FR
 # VERSION COMPLETE GITHUB
+# ANTI-BLOCK / PLAYWRIGHT
 # =========================================================
 
 import asyncio
@@ -349,10 +350,46 @@ async def scrape():
 
         browser = await p.chromium.launch(
 
-            headless=True
+            headless=True,
+
+            args=[
+
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-dev-shm-usage"
+
+            ]
         )
 
-        page = await browser.new_page()
+        context = await browser.new_context(
+
+            user_agent=(
+
+                "Mozilla/5.0 "
+                "(Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 "
+                "(KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            ),
+
+            viewport={
+
+                "width": 1600,
+                "height": 900
+            },
+
+            locale="fr-FR"
+        )
+
+        page = await context.new_page()
+
+        await page.add_init_script("""
+
+Object.defineProperty(navigator, 'webdriver', {
+    get: () => undefined
+})
+
+""")
 
         print("🌐 OUVERTURE")
 
@@ -363,17 +400,46 @@ async def scrape():
             timeout=90000
         )
 
-        # attente JS
-        await page.wait_for_timeout(8000)
+        print("⏳ ATTENTE DOM")
+
+        await page.wait_for_load_state(
+            "networkidle"
+        )
+
+        await page.wait_for_timeout(10000)
 
         # scroll progressif
-        for i in range(10):
+        for i in range(12):
 
-            print(f"🖱️ SCROLL {i+1}/10")
+            print(f"🖱️ SCROLL {i+1}/12")
 
-            await page.mouse.wheel(0, 5000)
+            await page.evaluate("""
 
-            await page.wait_for_timeout(1500)
+window.scrollBy(
+    0,
+    window.innerHeight
+)
+
+""")
+
+            await page.wait_for_timeout(2000)
+
+        # debug html
+        html = await page.content()
+
+        with open(
+
+            "debug_avoventes.html",
+
+            "w",
+
+            encoding="utf-8"
+
+        ) as f:
+
+            f.write(html)
+
+        print("💾 HTML DEBUG SAUVEGARDE")
 
         print("🔎 RECHERCHE DES BLOCS")
 
@@ -388,7 +454,10 @@ async def scrape():
             ".property",
             ".vente",
             "article",
-            ".grid-item"
+            ".grid-item",
+            ".col-lg-4",
+            ".col-md-4",
+            ".thumbnail"
 
         ]
 
@@ -425,7 +494,6 @@ async def scrape():
 
                 txt_low = txt.lower()
 
-                # filtre immobilier
                 if not any(
 
                     x in txt_low for x in [
