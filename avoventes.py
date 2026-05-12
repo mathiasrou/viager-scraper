@@ -1,6 +1,6 @@
 # =========================================================
 # AVOVENTES SCRAPER
-# VERSION COMPLETE DEBUG
+# VERSION COMPLETE GITHUB
 # =========================================================
 
 import asyncio
@@ -232,6 +232,7 @@ def geolocate(df):
     print("================================================")
     print("📍 GEOLOCALISATION")
     print("================================================")
+
     print(
         f"📍 GEO OK = {df['lat'].notna().sum()}"
     )
@@ -249,6 +250,20 @@ def create_map(df):
         location=[46.5, 2.5],
         zoom_start=6,
         tiles="CartoDB positron"
+    )
+
+    css = """
+<style>
+.leaflet-div-icon{
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
+}
+</style>
+"""
+
+    m.get_root().html.add_child(
+        folium.Element(css)
     )
 
     for _, row in df.iterrows():
@@ -270,6 +285,16 @@ Voir annonce
 </a>
 """
 
+            html = """
+<div style="
+background:red;
+width:18px;
+height:18px;
+border-radius:50%;
+border:2px solid white;
+"></div>
+"""
+
             marker = folium.Marker(
 
                 location=[
@@ -283,15 +308,7 @@ Voir annonce
                 ),
 
                 icon=DivIcon(
-                    html="""
-<div style="
-background:red;
-width:18px;
-height:18px;
-border-radius:50%;
-border:2px solid white;
-"></div>
-""",
+                    html=html,
                     icon_size=(18, 18),
                     icon_anchor=(9, 9)
                 )
@@ -347,11 +364,7 @@ async def scrape():
                 "height": 900
             },
 
-            user_agent="""
-Mozilla/5.0 (Windows NT 10.0; Win64; x64)
-AppleWebKit/537.36 (KHTML, like Gecko)
-Chrome/122.0.0.0 Safari/537.36
-""",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
 
             locale="fr-FR",
 
@@ -460,7 +473,7 @@ Object.defineProperty(navigator, 'webdriver', {
         print("✅ HTML SAUVEGARDE")
 
         # =====================================================
-        # LINKS
+        # EXTRACTION
         # =====================================================
 
         print("")
