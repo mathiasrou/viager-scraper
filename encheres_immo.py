@@ -577,23 +577,18 @@ async def scrape():
 # =========================================================
 # GEO
 # =========================================================
+# =========================================================
+# GEOLOCALISATION SIMPLE
+# =========================================================
 
 def geolocate(df):
 
+    # lecture CSV
     geo = pd.read_csv(
-        CSV_CP,
-        sep=";"
+        CSV_CP
     )
 
-    # normalisation noms colonnes
-    geo.columns = [
-        c.strip().lower()
-        for c in geo.columns
-    ]
-
-    print("COLONNES GEO =", geo.columns.tolist())
-
-    # sélection colonnes
+    # garder uniquement les colonnes utiles
     geo = geo[[
         "code_postal",
         "latitude",
@@ -607,21 +602,32 @@ def geolocate(df):
         "lon"
     ]
 
-    # conversions
-    geo["cp"] = geo["cp"].astype(str)
+    # conversion types
+    geo["cp"] = (
+        geo["cp"]
+        .astype(str)
+        .str.strip()
+    )
 
     df["cp"] = (
         df["cp"]
         .fillna("")
         .astype(str)
         .str.replace(".0", "", regex=False)
+        .str.strip()
     )
 
-    # merge
+    # merge coordonnées
     df = df.merge(
         geo,
         on="cp",
         how="left"
+    )
+
+    print(
+        "📍 GEOLOCALISATION OK :",
+        df["lat"].notna().sum(),
+        "annonces géolocalisées"
     )
 
     return df
