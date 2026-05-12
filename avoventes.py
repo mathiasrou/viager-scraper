@@ -1,6 +1,6 @@
 # =========================================================
 # AVOVENTES SCRAPER + HISTORIQUE + CARTE
-# VERSION COMPLETE
+# VERSION PROPRE DEFINITIVE
 # =========================================================
 
 import asyncio
@@ -254,23 +254,6 @@ async def scrape():
 
     seen = set()
 
-    if os.path.exists(HISTORY_FILE):
-
-        try:
-
-            old_df = pd.read_csv(
-                HISTORY_FILE,
-                sep=";"
-            )
-
-        except:
-
-            old_df = pd.DataFrame()
-
-    else:
-
-        old_df = pd.DataFrame()
-
     async with async_playwright() as p:
 
         browser = await p.chromium.launch(
@@ -312,10 +295,8 @@ async def scrape():
 
             await page.wait_for_timeout(3000)
 
-        except Exception as e:
-
-            print("❌ COOKIE")
-            print(e)
+        except:
+            pass
 
         # =====================================================
         # DEBUG
@@ -326,21 +307,9 @@ async def scrape():
             full_page=True
         )
 
-        html = await page.content()
-
-        with open(
-            "debug_avoventes.html",
-            "w",
-            encoding="utf-8"
-        ) as f:
-
-            f.write(html)
-
-        # =====================================================
-        # TEXTE
-        # =====================================================
-
-        body = await page.locator("body").inner_text()
+        body = await page.locator(
+            "body"
+        ).inner_text()
 
         blocs = re.split(
             r"Vente aux enchères",
@@ -372,37 +341,38 @@ async def scrape():
 
                 row["status"] = extract_status(bloc)
 
-                # =================================================
-                # TITRE
-                # =================================================
-
                 titre = ""
 
-                lignes = bloc.split("Date de la vente")[0]
+                lignes = bloc.split(
+                    "Date de la vente"
+                )[0]
 
-                morceaux = lignes.split("France")
+                morceaux = lignes.split(
+                    "France"
+                )
 
                 if len(morceaux) > 0:
-
                     titre = morceaux[0][-150:]
 
                 row["titre"] = clean(titre)
 
-                # =================================================
-                # URL
-                # =================================================
-
                 row["url"] = BASE_URL
 
-                key = (
+                # CLE UNIQUE
+                row["id_unique"] = (
                     str(row["titre"])
+                    + "_"
+                    + str(row["cp"])
+                    + "_"
                     + str(row["prix"])
                 )
 
-                if key in seen:
+                if row["id_unique"] in seen:
                     continue
 
-                seen.add(key)
+                seen.add(
+                    row["id_unique"]
+                )
 
                 rows.append(row)
 
@@ -420,24 +390,6 @@ async def scrape():
         await browser.close()
 
     df = pd.DataFrame(rows)
-
-    # =========================================================
-    # HISTORIQUE
-    # =========================================================
-
-    if len(old_df) > 0:
-
-        df = pd.concat(
-            [old_df, df],
-            ignore_index=True
-        )
-
-    if len(df) > 0:
-
-        df = df.drop_duplicates(
-            subset=["titre", "prix"],
-            keep="first"
-        )
 
     return df
 
@@ -499,12 +451,6 @@ def geolocate(df):
 
 def create_map(df):
 
-    active_df = df.copy()
-
-    active_df = active_df.drop_duplicates(
-        subset=["titre", "prix"]
-    )
-
     m = folium.Map(
         location=[46.5, 2.5],
         zoom_start=6,
@@ -529,7 +475,7 @@ def create_map(df):
         folium.Element(css)
     )
 
-    for _, row in active_df.iterrows():
+    for _, row in df.iterrows():
 
         try:
 
@@ -570,29 +516,6 @@ def create_map(df):
             elif row["type"] == "Immeuble":
                 symbol = "🏬"
 
-            if prix is not None and prix >= 400000:
-                symbol = f"{int(prix/100000)}€"
-
-            bottom = ""
-
-            try:
-
-                if row["date_vente"]:
-
-                    d = datetime.strptime(
-                        row["date_vente"],
-                        "%d/%m/%Y"
-                    )
-
-                    delta = (
-                        d - datetime.now()
-                    ).days
-
-                    bottom = f"{delta}j"
-
-            except:
-                pass
-
             popup = f"""
 <b>{row['type']}</b><br><br>
 
@@ -613,9 +536,6 @@ Voir annonce
 <div style="width:42px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:transparent;">
     <div style="background:{color}; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; font-size:14px; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.4);">
         {symbol}
-    </div>
-    <div style="font-size:11px; font-weight:bold; color:black; background:white; padding:1px 4px; border-radius:6px; margin-top:2px; border:1px solid #999; white-space:nowrap;">
-        {bottom}
     </div>
 </div>
 """
@@ -658,12 +578,65 @@ async def main():
 
         df = await scrape()
 
-        print(f"📦 TOTAL = {len(df)}")
+        print(f"📦 SCRAPE = {len(df)}")
 
         if len(df) == 0:
+
+            send_telegram(
+                "❌ AVOVENTES : aucune annonce scrapee"
+            )
+
             return
 
-        df.to_csv(
+        # =====================================================
+        # HISTORIQUE
+        # =====================================================
+
+        if os.path.exists(HISTORY_FILE):
+
+            old_df = pd.read_csv(
+                HISTORY_FILE,
+                sep=";"
+            )
+
+        else:
+
+            old_df = pd.DataFrame()
+
+        if len(old_df) > 0:
+
+            old_ids = set(
+                old_df["id_unique"]
+                .astype(str)
+            )
+
+        else:
+
+            old_ids = set()
+
+        # nouvelles annonces
+        new_df = df[
+            ~df["id_unique"]
+            .astype(str)
+            .isin(old_ids)
+        ].copy()
+
+        print(
+            f"🆕 NOUVELLES = {len(new_df)}"
+        )
+
+        # sauvegarde historique
+        combined = pd.concat(
+            [old_df, df],
+            ignore_index=True
+        )
+
+        combined = combined.drop_duplicates(
+            subset=["id_unique"],
+            keep="first"
+        )
+
+        combined.to_csv(
             HISTORY_FILE,
             sep=";",
             index=False,
@@ -672,18 +645,59 @@ async def main():
 
         print("💾 HISTORIQUE OK")
 
-        df = geolocate(df)
+        # aucune nouveauté
+        if len(new_df) == 0:
+
+            send_telegram(
+                "😴 AVOVENTES : aucune nouvelle annonce"
+            )
+
+            return
+
+        # =====================================================
+        # GEO
+        # =====================================================
+
+        new_df = geolocate(new_df)
 
         print("📍 GEO OK")
 
-        create_map(df)
+        # =====================================================
+        # CARTE
+        # =====================================================
+
+        create_map(new_df)
 
         send_file(OUTPUT_MAP)
 
+        # =====================================================
+        # TELEGRAM
+        # =====================================================
+
         send_telegram(
-            f"✅ AVOVENTES\n"
-            f"{len(df)} annonces"
+            f"🔥 AVOVENTES\n"
+            f"{len(new_df)} nouvelles annonces"
         )
+
+        for _, row in new_df.iterrows():
+
+            msg = ""
+
+            msg += "🏠 ENCHERE\n\n"
+
+            msg += f"📍 Type : {row.get('type')}\n"
+
+            msg += f"💰 Prix : {row.get('prix')} €\n"
+
+            msg += f"📅 Vente : {row.get('date_vente')}\n"
+
+            msg += f"📍 CP : {row.get('cp')}\n\n"
+
+            msg += f"{row.get('titre')}\n\n"
+
+            msg += f"🔗 {row['url']}"
+
+            send_telegram(msg)
 
         print("✅ FIN")
 
@@ -695,7 +709,7 @@ async def main():
         traceback.print_exc()
 
         send_telegram(
-            f"❌ ERREUR\n{e}"
+            f"❌ ERREUR AVOVENTES\n{e}"
         )
 
 
