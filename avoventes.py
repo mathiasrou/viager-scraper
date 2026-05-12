@@ -1,574 +1,708 @@
-# ============================================================
-# AVOVENTES SCRAPER ULTRA DEBUG - VERSION AUTONOME
-# ============================================================
-# Compatible GitHub Actions sans bs4
-#
-# Dépendances minimales :
-# pip install playwright pandas
-# playwright install chromium
-#
-# ============================================================
+# =========================================================
+# AVOVENTES SCRAPER + HISTORIQUE + CARTE
+# VERSION COMPLETE
+# =========================================================
 
 import asyncio
-import json
-import re
-from urllib.parse import urljoin
-
 import pandas as pd
+import re
+import folium
+import traceback
+import os
+import requests
+
+from datetime import datetime
+
 from playwright.async_api import async_playwright
 
-
-URL = "https://avoventes.fr/recherche/toutes"
-
-
-# ============================================================
-# HELPERS
-# ============================================================
-
-def sep(title):
-    print("\n" + "=" * 80)
-    print(title)
-    print("=" * 80)
+from folium.features import DivIcon
 
 
-def save_txt(filename, content):
+# =========================================================
+# CONFIG
+# =========================================================
 
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(content)
+BASE_URL = "https://avoventes.fr/recherche/toutes"
+
+CSV_CP = "base-officielle-codes-postaux.csv"
+
+HISTORY_FILE = "historique_avoventes.csv"
+
+OUTPUT_MAP = "carte_avoventes.html"
 
 
-def save_json(filename, data):
+# =========================================================
+# TELEGRAM
+# =========================================================
 
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+def send_telegram(message):
+
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        print("❌ TELEGRAM NON CONFIGURE")
+        return
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+    requests.post(
+        url,
+        data={
+            "chat_id": chat_id,
+            "text": message
+        }
+    )
 
 
-# ============================================================
-# MAIN
-# ============================================================
+def send_file(path):
 
-async def main():
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        return
+
+    url = f"https://api.telegram.org/bot{token}/sendDocument"
+
+    with open(path, "rb") as f:
+
+        requests.post(
+            url,
+            data={"chat_id": chat_id},
+            files={"document": f}
+        )
+
+
+# =========================================================
+# CLEAN
+# =========================================================
+
+def clean(txt):
+
+    if txt is None:
+        return ""
+
+    txt = str(txt)
+
+    txt = txt.replace("\n", " ")
+    txt = txt.replace("\t", " ")
+    txt = txt.replace("\xa0", " ")
+    txt = txt.replace("\u202f", " ")
+
+    txt = re.sub(
+        r"\s+",
+        " ",
+        txt
+    )
+
+    return txt.strip()
+
+
+# =========================================================
+# TYPE
+# =========================================================
+
+def detect_type(txt):
+
+    t = txt.lower()
+
+    if "appartement" in t:
+        return "Appartement"
+
+    if "maison" in t:
+        return "Maison"
+
+    if "villa" in t:
+        return "Villa"
+
+    if "terrain" in t:
+        return "Terrain"
+
+    if "immeuble" in t:
+        return "Immeuble"
+
+    if "local commercial" in t:
+        return "Local commercial"
+
+    return "Autre"
+
+
+# =========================================================
+# EXTRACTIONS
+# =========================================================
+
+def extract_price(txt):
+
+    try:
+
+        m = re.search(
+            r"Mise à prix(?: initiale)?\s*:\s*([\d\s]+)",
+            txt,
+            re.I
+        )
+
+        if not m:
+            return None
+
+        val = (
+            m.group(1)
+            .replace(" ", "")
+        )
+
+        return int(val)
+
+    except:
+        return None
+
+
+def extract_cp(txt):
+
+    try:
+
+        m = re.findall(
+            r"\b(\d{5})\b",
+            txt
+        )
+
+        if len(m) > 0:
+            return m[0]
+
+    except:
+        pass
+
+    return None
+
+
+def extract_date(txt):
+
+    try:
+
+        m = re.search(
+            r"Date de la vente\s*:\s*(.+?)(?:Date des visites|$)",
+            txt,
+            re.S | re.I
+        )
+
+        if not m:
+            return None
+
+        full = clean(m.group(1))
+
+        d = re.search(
+            r"(\d{2})\s+(\w+)\s+(\d{4})",
+            full,
+            re.I
+        )
+
+        if not d:
+            return None
+
+        mois = {
+            "janvier": "01",
+            "février": "02",
+            "mars": "03",
+            "avril": "04",
+            "mai": "05",
+            "juin": "06",
+            "juillet": "07",
+            "août": "08",
+            "septembre": "09",
+            "octobre": "10",
+            "novembre": "11",
+            "décembre": "12"
+        }
+
+        jour = d.group(1)
+
+        mois_txt = d.group(2).lower()
+
+        annee = d.group(3)
+
+        if mois_txt not in mois:
+            return None
+
+        return f"{jour}/{mois[mois_txt]}/{annee}"
+
+    except:
+        return None
+
+
+def extract_status(txt):
+
+    t = txt.lower()
+
+    if "adjugé" in t:
+        return "terminee"
+
+    if "retirée" in t:
+        return "retiree"
+
+    if "reportée" in t:
+        return "reportee"
+
+    return "future"
+
+
+# =========================================================
+# SCRAPE
+# =========================================================
+
+async def scrape():
+
+    rows = []
+
+    seen = set()
+
+    if os.path.exists(HISTORY_FILE):
+
+        try:
+
+            old_df = pd.read_csv(
+                HISTORY_FILE,
+                sep=";"
+            )
+
+        except:
+
+            old_df = pd.DataFrame()
+
+    else:
+
+        old_df = pd.DataFrame()
 
     async with async_playwright() as p:
 
         browser = await p.chromium.launch(
             headless=True,
             args=[
-                "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
                 "--disable-dev-shm-usage"
             ]
         )
 
-        context = await browser.new_context(
-            viewport={"width": 1600, "height": 4000},
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            )
+        page = await browser.new_page(
+            viewport={
+                "width": 1600,
+                "height": 4000
+            }
         )
 
-        page = await context.new_page()
-
-        # ====================================================
-        # CAPTURE RESEAUX
-        # ====================================================
-
-        api_calls = []
-
-        async def handle_response(response):
-
-            try:
-
-                url = response.url.lower()
-
-                ct = response.headers.get(
-                    "content-type",
-                    ""
-                ).lower()
-
-                interesting = any([
-                    "json" in ct,
-                    "api" in url,
-                    "search" in url,
-                    "recherche" in url,
-                    "vente" in url,
-                    "encher" in url,
-                    "annonce" in url,
-                ])
-
-                if interesting:
-
-                    print("\n📡 RESPONSE")
-                    print("URL =", response.url)
-                    print("STATUS =", response.status)
-                    print("CONTENT TYPE =", ct)
-
-                    api_calls.append({
-                        "url": response.url,
-                        "status": response.status,
-                        "content_type": ct
-                    })
-
-                    try:
-
-                        txt = await response.text()
-
-                        filename = (
-                            "api_" +
-                            re.sub(r"[^a-zA-Z0-9]", "_", response.url)[:80] +
-                            ".txt"
-                        )
-
-                        save_txt(
-                            filename,
-                            txt[:200000]
-                        )
-
-                    except Exception as e:
-                        print("response text error", e)
-
-            except Exception as e:
-                print("handle_response error", e)
-
-        page.on("response", handle_response)
-
-        # ====================================================
-        # GOTO
-        # ====================================================
-
-        sep("OPEN PAGE")
+        print("🌐 OUVERTURE")
 
         await page.goto(
-            URL,
+            BASE_URL,
             wait_until="networkidle",
             timeout=120000
         )
 
-        print("FINAL URL =", page.url)
-
-        title = await page.title()
-
-        print("TITLE =", title)
-
-        # ====================================================
-        # ATTENTE LONGUE
-        # ====================================================
-
-        sep("WAIT")
-
-        await page.wait_for_timeout(15000)
-
-        # ====================================================
+        # =====================================================
         # COOKIES
-        # ====================================================
+        # =====================================================
 
-        sep("TRY ACCEPT COOKIES")
+        try:
 
-        cookie_selectors = [
-            "button:has-text('Accepter')",
-            "button:has-text('Tout accepter')",
-            "button:has-text('OK')",
-            "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
-            ".CybotCookiebotDialogBodyButton",
-        ]
+            await page.locator(
+                "button:has-text('Tout accepter')"
+            ).click(
+                timeout=5000
+            )
 
-        for sel in cookie_selectors:
+            print("🍪 COOKIES OK")
 
-            try:
+            await page.wait_for_timeout(3000)
 
-                locator = page.locator(sel)
+        except Exception as e:
 
-                count = await locator.count()
+            print("❌ COOKIE")
+            print(e)
 
-                print(sel, "->", count)
-
-                if count > 0:
-
-                    await locator.first.click(timeout=3000)
-
-                    print("COOKIE CLICKED =", sel)
-
-                    await page.wait_for_timeout(5000)
-
-                    break
-
-            except Exception as e:
-                print("cookie error", sel, e)
-
-        # ====================================================
-        # SCREENSHOT INITIAL
-        # ====================================================
-
-        sep("SCREENSHOT")
+        # =====================================================
+        # DEBUG
+        # =====================================================
 
         await page.screenshot(
-            path="debug_initial.png",
+            path="debug_avoventes.png",
             full_page=True
         )
-
-        print("saved debug_initial.png")
-
-        # ====================================================
-        # HTML INITIAL
-        # ====================================================
-
-        sep("HTML")
 
         html = await page.content()
 
-        save_txt(
-            "debug_initial.html",
-            html
+        with open(
+            "debug_avoventes.html",
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            f.write(html)
+
+        # =====================================================
+        # TEXTE
+        # =====================================================
+
+        body = await page.locator("body").inner_text()
+
+        blocs = re.split(
+            r"Vente aux enchères",
+            body
         )
 
-        print("HTML SIZE =", len(html))
+        print(f"📦 BLOCS = {len(blocs)}")
 
-        # ====================================================
-        # BODY TEXT
-        # ====================================================
+        for bloc in blocs:
 
-        sep("BODY TEXT")
+            bloc = clean(bloc)
 
-        body_text = await page.locator("body").inner_text()
-
-        save_txt(
-            "body_text.txt",
-            body_text
-        )
-
-        print(body_text[:5000])
-
-        # ====================================================
-        # IFRAME DEBUG
-        # ====================================================
-
-        sep("IFRAMES")
-
-        frames = page.frames
-
-        print("FRAME COUNT =", len(frames))
-
-        for i, frame in enumerate(frames):
-
-            print("\nFRAME", i)
-            print("URL =", frame.url)
+            if len(bloc) < 100:
+                continue
 
             try:
 
-                frame_html = await frame.content()
+                row = {}
 
-                save_txt(
-                    f"frame_{i}.html",
-                    frame_html
+                row["txt"] = bloc
+
+                row["type"] = detect_type(bloc)
+
+                row["prix"] = extract_price(bloc)
+
+                row["cp"] = extract_cp(bloc)
+
+                row["date_vente"] = extract_date(bloc)
+
+                row["status"] = extract_status(bloc)
+
+                # =================================================
+                # TITRE
+                # =================================================
+
+                titre = ""
+
+                lignes = bloc.split("Date de la vente")[0]
+
+                morceaux = lignes.split("France")
+
+                if len(morceaux) > 0:
+
+                    titre = morceaux[0][-150:]
+
+                row["titre"] = clean(titre)
+
+                # =================================================
+                # URL
+                # =================================================
+
+                row["url"] = BASE_URL
+
+                key = (
+                    str(row["titre"])
+                    + str(row["prix"])
                 )
 
-                print("SIZE =", len(frame_html))
+                if key in seen:
+                    continue
+
+                seen.add(key)
+
+                rows.append(row)
+
+                print(
+                    f"✅ {row['type']} | "
+                    f"{row['prix']}€ | "
+                    f"{row['cp']}"
+                )
 
             except Exception as e:
-                print("frame error", e)
 
-        # ====================================================
-        # LOCATORS DEBUG
-        # ====================================================
-
-        sep("LOCATOR COUNTS")
-
-        selectors = [
-            "article",
-            ".card",
-            ".vente",
-            ".annonce",
-            ".listing",
-            ".item",
-            ".result",
-            "a",
-            "img",
-            "[class*=vente]",
-            "[class*=annonce]",
-            "[class*=card]",
-            "[class*=result]",
-        ]
-
-        locator_counts = []
-
-        for sel in selectors:
-
-            try:
-
-                count = await page.locator(sel).count()
-
-                locator_counts.append({
-                    "selector": sel,
-                    "count": count
-                })
-
-                print(f"{sel:30} -> {count}")
-
-            except Exception as e:
-                print(sel, e)
-
-        save_json(
-            "locator_counts.json",
-            locator_counts
-        )
-
-        # ====================================================
-        # TOUS LES LIENS
-        # ====================================================
-
-        sep("ALL LINKS")
-
-        links = await page.locator("a").evaluate_all("""
-        els => els.map(e => ({
-            href: e.href || "",
-            text: e.innerText || "",
-            className: e.className || ""
-        }))
-        """)
-
-        print("TOTAL LINKS =", len(links))
-
-        save_json(
-            "all_links.json",
-            links
-        )
-
-        # ====================================================
-        # FILTRE ANNONCES
-        # ====================================================
-
-        sep("POTENTIAL ANNOUNCES")
-
-        keywords = [
-            "vente",
-            "encher",
-            "bien",
-            "maison",
-            "appartement",
-            "villa",
-            "terrain",
-            "immeuble",
-            "local",
-            "adjudication",
-        ]
-
-        banned = [
-            "facebook",
-            "linkedin",
-            "twitter",
-            "youtube",
-            "cookie",
-            "privacy",
-            "login",
-            "connexion",
-            "contact",
-        ]
-
-        annonces = []
-
-        for l in links:
-
-            href = l["href"].lower()
-            text = l["text"].lower()
-
-            if any(b in href for b in banned):
-                continue
-
-            if any(b in text for b in banned):
-                continue
-
-            good = False
-
-            if any(k in href for k in keywords):
-                good = True
-
-            if any(k in text for k in keywords):
-                good = True
-
-            if good:
-
-                annonces.append(l)
-
-                print("\n✅ POSSIBLE")
-                print("TEXT =", l["text"])
-                print("URL =", l["href"])
-
-        print("\nTOTAL POSSIBLE =", len(annonces))
-
-        save_json(
-            "potential_annonces.json",
-            annonces
-        )
-
-        # ====================================================
-        # SCROLL MASSIF
-        # ====================================================
-
-        sep("SCROLL")
-
-        previous_height = 0
-
-        for i in range(25):
-
-            height = await page.evaluate(
-                "document.body.scrollHeight"
-            )
-
-            print(f"SCROLL {i+1}/25 HEIGHT =", height)
-
-            if height == previous_height:
-                print("HEIGHT STABLE")
-
-            previous_height = height
-
-            await page.mouse.wheel(0, 8000)
-
-            await page.wait_for_timeout(2500)
-
-        # ====================================================
-        # SCREENSHOT FINAL
-        # ====================================================
-
-        sep("FINAL SCREENSHOT")
-
-        await page.screenshot(
-            path="debug_after_scroll.png",
-            full_page=True
-        )
-
-        # ====================================================
-        # HTML FINAL
-        # ====================================================
-
-        sep("FINAL HTML")
-
-        html2 = await page.content()
-
-        save_txt(
-            "debug_after_scroll.html",
-            html2
-        )
-
-        print("FINAL HTML SIZE =", len(html2))
-
-        # ====================================================
-        # LINKS AFTER SCROLL
-        # ====================================================
-
-        sep("LINKS AFTER SCROLL")
-
-        links2 = await page.locator("a").evaluate_all("""
-        els => els.map(e => ({
-            href: e.href || "",
-            text: e.innerText || "",
-            className: e.className || ""
-        }))
-        """)
-
-        print("TOTAL LINKS AFTER SCROLL =", len(links2))
-
-        save_json(
-            "all_links_after_scroll.json",
-            links2
-        )
-
-        # ====================================================
-        # PATTERNS IMMOBILIERS
-        # ====================================================
-
-        sep("IMMOBILIER PATTERNS")
-
-        patterns = [
-            r"\d+\s?€",
-            r"mise à prix",
-            r"adjudication",
-            r"appartement",
-            r"maison",
-            r"villa",
-            r"terrain",
-            r"m²",
-        ]
-
-        pattern_results = []
-
-        final_text = await page.locator("body").inner_text()
-
-        for ptn in patterns:
-
-            found = re.findall(
-                ptn,
-                final_text,
-                flags=re.I
-            )
-
-            print("\nPATTERN =", ptn)
-            print("COUNT =", len(found))
-
-            pattern_results.append({
-                "pattern": ptn,
-                "count": len(found),
-                "examples": found[:20]
-            })
-
-        save_json(
-            "patterns.json",
-            pattern_results
-        )
-
-        # ====================================================
-        # EXPORT CSV
-        # ====================================================
-
-        sep("CSV EXPORT")
-
-        df = pd.DataFrame(annonces)
-
-        df.to_csv(
-            "potential_annonces.csv",
-            index=False
-        )
-
-        print(df.head())
-
-        # ====================================================
-        # API EXPORT
-        # ====================================================
-
-        save_json(
-            "api_calls.json",
-            api_calls
-        )
-
-        print("\nAPI CALLS =", len(api_calls))
-
-        # ====================================================
-        # DONE
-        # ====================================================
-
-        sep("DONE")
-
-        print("""
-FILES GENERATED:
-
-- debug_initial.png
-- debug_initial.html
-- debug_after_scroll.png
-- debug_after_scroll.html
-- body_text.txt
-- frame_*.html
-- all_links.json
-- all_links_after_scroll.json
-- potential_annonces.json
-- potential_annonces.csv
-- api_calls.json
-- locator_counts.json
-- patterns.json
-""")
+                print("❌ BLOC")
+                print(e)
 
         await browser.close()
 
+    df = pd.DataFrame(rows)
+
+    # =========================================================
+    # HISTORIQUE
+    # =========================================================
+
+    if len(old_df) > 0:
+
+        df = pd.concat(
+            [old_df, df],
+            ignore_index=True
+        )
+
+    if len(df) > 0:
+
+        df = df.drop_duplicates(
+            subset=["titre", "prix"],
+            keep="first"
+        )
+
+    return df
+
+
+# =========================================================
+# GEOLOCALISATION
+# =========================================================
+
+def geolocate(df):
+
+    geo = pd.read_csv(
+        CSV_CP
+    )
+
+    geo = geo[[
+        "code_postal",
+        "latitude",
+        "longitude"
+    ]]
+
+    geo.columns = [
+        "cp",
+        "lat",
+        "lon"
+    ]
+
+    geo["cp"] = (
+        geo["cp"]
+        .astype(str)
+        .str.strip()
+    )
+
+    df["cp"] = (
+        df["cp"]
+        .fillna("")
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.strip()
+    )
+
+    df = df.merge(
+        geo,
+        on="cp",
+        how="left"
+    )
+
+    print(
+        "📍 GEOLOCALISATION OK :",
+        df["lat"].notna().sum(),
+        "annonces"
+    )
+
+    return df
+
+
+# =========================================================
+# CREATE MAP
+# =========================================================
+
+def create_map(df):
+
+    active_df = df.copy()
+
+    active_df = active_df.drop_duplicates(
+        subset=["titre", "prix"]
+    )
+
+    m = folium.Map(
+        location=[46.5, 2.5],
+        zoom_start=6,
+        tiles="CartoDB positron"
+    )
+
+    css = """
+<style>
+.leaflet-div-icon{
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
+}
+.my-div-icon{
+    background:transparent !important;
+    border:none !important;
+}
+</style>
+"""
+
+    m.get_root().html.add_child(
+        folium.Element(css)
+    )
+
+    for _, row in active_df.iterrows():
+
+        try:
+
+            if pd.isna(row["lat"]):
+                continue
+
+            prix = row["prix"]
+
+            if prix is None:
+                color = "#666666"
+
+            elif prix < 100000:
+                color = "#ff0000"
+
+            elif prix < 200000:
+                color = "#8000ff"
+
+            elif prix < 300000:
+                color = "#00aa00"
+
+            else:
+                color = "#666666"
+
+            symbol = "€"
+
+            if row["type"] == "Appartement":
+                symbol = "🏢"
+
+            elif row["type"] == "Maison":
+                symbol = "🏠"
+
+            elif row["type"] == "Villa":
+                symbol = "🏡"
+
+            elif row["type"] == "Terrain":
+                symbol = "🌳"
+
+            elif row["type"] == "Immeuble":
+                symbol = "🏬"
+
+            if prix is not None and prix >= 400000:
+                symbol = f"{int(prix/100000)}€"
+
+            bottom = ""
+
+            try:
+
+                if row["date_vente"]:
+
+                    d = datetime.strptime(
+                        row["date_vente"],
+                        "%d/%m/%Y"
+                    )
+
+                    delta = (
+                        d - datetime.now()
+                    ).days
+
+                    bottom = f"{delta}j"
+
+            except:
+                pass
+
+            popup = f"""
+<b>{row['type']}</b><br><br>
+
+💰 Prix : {row['prix']} €<br>
+
+📅 Vente : {row['date_vente']}<br>
+
+📍 CP : {row['cp']}<br><br>
+
+📝 {row['titre']}<br><br>
+
+<a href="{row['url']}" target="_blank">
+Voir annonce
+</a>
+"""
+
+            html = f"""
+<div style="width:42px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:transparent;">
+    <div style="background:{color}; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; font-size:14px; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.4);">
+        {symbol}
+    </div>
+    <div style="font-size:11px; font-weight:bold; color:black; background:white; padding:1px 4px; border-radius:6px; margin-top:2px; border:1px solid #999; white-space:nowrap;">
+        {bottom}
+    </div>
+</div>
+"""
+
+            marker = folium.Marker(
+                location=[row["lat"], row["lon"]],
+                popup=folium.Popup(
+                    popup,
+                    max_width=350
+                ),
+                icon=DivIcon(
+                    html=html,
+                    class_name="my-div-icon",
+                    icon_size=(42, 42),
+                    icon_anchor=(21, 21)
+                )
+            )
+
+            marker.add_to(m)
+
+        except Exception as e:
+
+            print("❌ MARKER")
+            print(e)
+
+    m.save(OUTPUT_MAP)
+
+    print("✅ CARTE SAUVEGARDEE")
+
+
+# =========================================================
+# MAIN
+# =========================================================
+
+async def main():
+
+    try:
+
+        print("🚀 SCRAPING")
+
+        df = await scrape()
+
+        print(f"📦 TOTAL = {len(df)}")
+
+        if len(df) == 0:
+            return
+
+        df.to_csv(
+            HISTORY_FILE,
+            sep=";",
+            index=False,
+            encoding="utf-8-sig"
+        )
+
+        print("💾 HISTORIQUE OK")
+
+        df = geolocate(df)
+
+        print("📍 GEO OK")
+
+        create_map(df)
+
+        send_file(OUTPUT_MAP)
+
+        send_telegram(
+            f"✅ AVOVENTES\n"
+            f"{len(df)} annonces"
+        )
+
+        print("✅ FIN")
+
+    except Exception as e:
+
+        print("❌ MAIN")
+        print(e)
+
+        traceback.print_exc()
+
+        send_telegram(
+            f"❌ ERREUR\n{e}"
+        )
+
+
+# =========================================================
+# RUN
+# =========================================================
 
 if __name__ == "__main__":
+
     asyncio.run(main())
