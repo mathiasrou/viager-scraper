@@ -3,19 +3,22 @@ name: scraper
 on:
   schedule:
     - cron: '0 11 * * *'
+
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+
   run:
+
     runs-on: ubuntu-latest
 
     steps:
 
       # =====================================================
-      # CLONE REPO
+      # CHECKOUT
       # =====================================================
 
       - name: Checkout
@@ -31,13 +34,16 @@ jobs:
           python-version: "3.12"
 
       # =====================================================
-      # DEPENDANCES LINUX PLAYWRIGHT
+      # DEPENDANCES LINUX
       # =====================================================
 
       - name: Install Linux dependencies
         run: |
+
           sudo apt-get update
+
           sudo apt-get install -y \
+            xvfb \
             libnss3 \
             libatk-bridge2.0-0 \
             libgtk-3-0 \
@@ -50,86 +56,100 @@ jobs:
             libasound2t64
 
       # =====================================================
-      # PYTHON PACKAGES
+      # PACKAGES PYTHON
       # =====================================================
 
       - name: Install Python packages
         run: |
+
           pip install pandas playwright folium requests
+
           playwright install chromium
 
       # =====================================================
-      # SCRIPT VIAGER
+      # VIAGER
       # =====================================================
 
       - name: Run Viager scraper
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
         run: |
+
           python carte_finale_totale.py
 
       # =====================================================
-      # SCRIPT ENCHERES IMMO
+      # ENCHERES IMMO
       # =====================================================
 
       - name: Run Encheres Immo scraper
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
         run: |
+
           python encheres_immo.py
 
       # =====================================================
-      # SCRIPT ENCHERES IMMONOTAIRES
+      # IMMONOTAIRES
       # =====================================================
 
-      - name: Run Encheres Immonotaires scraper
+      - name: Run Immonotaires scraper
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
         run: |
+
           python immonotaires.py
 
       # =====================================================
-      # SCRIPT AVOVENTES
+      # AVOVENTES
       # =====================================================
 
-      - name: Run Encheres Avoventes
+      - name: Run Avoventes scraper
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
         run: |
+
           xvfb-run python avoventes.py
 
       # =====================================================
-      # UPLOAD DEBUG
+      # DEBUG FILES
       # =====================================================
 
       - name: Upload debug avoventes
         uses: actions/upload-artifact@v4
+
         with:
           name: debug-avoventes
+
           path: |
             debug_avoventes.html
+            debug_avoventes.png
             debug_api.json
-      # =====================================================
-      
+
       # =====================================================
       # COMMIT HISTORIQUES
       # =====================================================
 
       - name: Commit historiques
+
         run: |
 
           git config --global user.name "bot"
+
           git config --global user.email "bot@bot.com"
 
-          git add historique_ids.csv
-          git add historique_immo.csv
-          git add historique_immonotaires.csv
-          git add historique_avoventes.csv
-          
+          git add historique_ids.csv || true
+          git add historique_immo.csv || true
+          git add historique_immonotaires.csv || true
+          git add historique_avoventes.csv || true
+
           git commit -m "update historiques" || echo "no changes"
 
           git pull --rebase
