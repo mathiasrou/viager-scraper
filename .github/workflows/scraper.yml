@@ -91,23 +91,28 @@ jobs:
         run: |
           python immonotaires.py
 
-        # =====================================================
-      # SCRIPT ENCHERES IMMONOTAIRES
+      # =====================================================
+      # SCRIPT AVOVENTES
       # =====================================================
 
       - name: Run Encheres Avoventes
-      - name: Upload debug html
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          xvfb-run python avoventes.py
+
+      # =====================================================
+      # UPLOAD DEBUG
+      # =====================================================
+
+      - name: Upload debug avoventes
         uses: actions/upload-artifact@v4
         with:
           name: debug-avoventes
           path: |
             debug_avoventes.html
             debug_api.json
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python avoventes.py
       # =====================================================
       
       # =====================================================
