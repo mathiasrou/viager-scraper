@@ -666,7 +666,7 @@ async def main():
     else:
 
         send_telegram(
-            "😴 Aucune nouvelle annonce"
+            "😴 René Costes - pas de nouvelles annoncdes"
         )
 
     # =====================================================
@@ -677,7 +677,7 @@ async def main():
         rejected
     )
 
-    send_file("carte.html")
+    send_file("carte_rene_costes.html")
 
     print("✅ FIN")
 
