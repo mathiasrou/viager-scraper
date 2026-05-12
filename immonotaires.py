@@ -1,6 +1,6 @@
 # =========================================================
 # IMMO NOTAIRES ENCHERES
-# VERSION COMPLETE
+# VERSION COMPLETE CORRIGEE
 # =========================================================
 
 import asyncio
@@ -11,10 +11,7 @@ import traceback
 import os
 import requests
 
-from datetime import datetime
-
 from playwright.async_api import async_playwright
-
 from folium.features import DivIcon
 
 
@@ -22,9 +19,7 @@ from folium.features import DivIcon
 # CONFIG
 # =========================================================
 
-BASE_URL = (
-    "https://immonotairesencheres.com/bien"
-)
+BASE_URL = "https://immonotairesencheres.com/bien"
 
 CSV_CP = "base-officielle-codes-postaux.csv"
 
@@ -102,6 +97,38 @@ def clean(txt):
 
 
 # =========================================================
+# TYPE
+# =========================================================
+
+def detect_type(txt):
+
+    t = txt.lower()
+
+    if "appartement" in t:
+        return "Appartement"
+
+    if "studio" in t:
+        return "Appartement"
+
+    if "maison" in t:
+        return "Maison"
+
+    if "villa" in t:
+        return "Villa"
+
+    if "terrain" in t:
+        return "Terrain"
+
+    if "immeuble" in t:
+        return "Immeuble"
+
+    if "atelier" in t:
+        return "Atelier"
+
+    return "Autre"
+
+
+# =========================================================
 # EXTRACTIONS
 # =========================================================
 
@@ -144,16 +171,26 @@ def extract_surface(txt):
 
     try:
 
-        m = re.search(
-            r"(\d+(?:[.,]\d+)?)\s?M",
+        matches = re.findall(
+            r"(\d+(?:[.,]\d+)?)\s?M2",
             txt,
             re.I
         )
 
-        if m:
-            return float(
-                m.group(1).replace(",", ".")
+        vals = []
+
+        for m in matches:
+
+            vals.append(
+                float(
+                    m.replace(",", ".")
+                )
             )
+
+        if len(vals) == 0:
+            return None
+
+        return max(vals)
 
     except:
         pass
@@ -184,7 +221,7 @@ def extract_rooms(txt):
     try:
 
         m = re.search(
-            r"(\d+)\s*pi[eè]ces",
+            r"(\d+)\s*pi[eè]ce",
             txt,
             re.I
         )
@@ -198,30 +235,8 @@ def extract_rooms(txt):
     return None
 
 
-def detect_type(txt):
-
-    t = txt.lower()
-
-    if "appartement" in t:
-        return "Appartement"
-
-    if "maison" in t:
-        return "Maison"
-
-    if "villa" in t:
-        return "Villa"
-
-    if "terrain" in t:
-        return "Terrain"
-
-    if "immeuble" in t:
-        return "Immeuble"
-
-    return "Autre"
-
-
 # =========================================================
-# GEO
+# GEOLOCALISATION
 # =========================================================
 
 def geolocate(df):
@@ -289,98 +304,128 @@ async def scrape():
 
         page = await browser.new_page()
 
-        print("🌐 OUVERTURE")
+        page_num = 0
 
-        await page.goto(
-            BASE_URL,
-            timeout=60000
-        )
+        while True:
 
-        await page.wait_for_timeout(6000)
+            url = (
+                f"{BASE_URL}?page={page_num}"
+            )
 
-        # scroll pour charger
-        await page.mouse.wheel(0, 5000)
+            print("")
+            print("=" * 60)
+            print(f"📄 PAGE {page_num}")
+            print("=" * 60)
 
-        await page.wait_for_timeout(3000)
-
-        articles = await page.query_selector_all(
-            "article.node-property"
-        )
-
-        print(
-            f"📦 {len(articles)} annonces"
-        )
-
-        for article in articles:
+            print(url)
 
             try:
 
-                txt = clean(
-                    await article.inner_text()
-                )
-
-                if len(txt) < 30:
-                    continue
-
-                link = await article.query_selector(
-                    "a.button"
-                )
-
-                if not link:
-                    continue
-
-                href = await link.get_attribute(
-                    "href"
-                )
-
-                if not href:
-                    continue
-
-                if href.startswith("/"):
-
-                    url = (
-                        "https://immonotairesencheres.com"
-                        + href
-                    )
-
-                else:
-
-                    url = href
-
-                if url in seen:
-                    continue
-
-                seen.add(url)
-
-                row = {
-
-                    "url": url,
-
-                    "txt": txt,
-
-                    "prix": extract_price(txt),
-
-                    "surface": extract_surface(txt),
-
-                    "cp": extract_cp(txt),
-
-                    "pieces": extract_rooms(txt),
-
-                    "type": detect_type(txt)
-
-                }
-
-                rows.append(row)
-
-                print(
-                    f"✅ {row['type']} | "
-                    f"{row['prix']}€"
+                await page.goto(
+                    url,
+                    timeout=60000
                 )
 
             except Exception as e:
 
-                print("❌ ARTICLE")
+                print("❌ PAGE")
                 print(e)
+
+                break
+
+            await page.wait_for_timeout(5000)
+
+            articles = await page.query_selector_all(
+                "article.node-property"
+            )
+
+            print(
+                f"🧩 ARTICLES = {len(articles)}"
+            )
+
+            if len(articles) == 0:
+                break
+
+            count_before = len(rows)
+
+            for article in articles:
+
+                try:
+
+                    txt = clean(
+                        await article.inner_text()
+                    )
+
+                    if len(txt) < 20:
+                        continue
+
+                    link = await article.query_selector(
+                        "a.button"
+                    )
+
+                    if not link:
+                        continue
+
+                    href = await link.get_attribute(
+                        "href"
+                    )
+
+                    if not href:
+                        continue
+
+                    if href.startswith("/"):
+
+                        annonce_url = (
+                            "https://immonotairesencheres.com"
+                            + href
+                        )
+
+                    else:
+
+                        annonce_url = href
+
+                    if annonce_url in seen:
+                        continue
+
+                    seen.add(annonce_url)
+
+                    row = {
+
+                        "url": annonce_url,
+
+                        "txt": txt,
+
+                        "prix": extract_price(txt),
+
+                        "surface": extract_surface(txt),
+
+                        "cp": extract_cp(txt),
+
+                        "pieces": extract_rooms(txt),
+
+                        "type": detect_type(txt)
+
+                    }
+
+                    rows.append(row)
+
+                    print(
+                        f"✅ {row['type']} | "
+                        f"{row['prix']}€ | "
+                        f"{row['surface']}m²"
+                    )
+
+                except Exception as e:
+
+                    print("❌ ARTICLE")
+                    print(e)
+
+            if len(rows) == count_before:
+
+                print("⛔ FIN PAGINATION")
+                break
+
+            page_num += 1
 
         await browser.close()
 
@@ -429,16 +474,24 @@ def create_map(df):
             prix = row["prix"]
 
             if prix is None:
+
                 color = "#666666"
 
             elif prix < 100000:
+
                 color = "#ff0000"
 
             elif prix < 300000:
+
                 color = "#8000ff"
 
-            else:
+            elif prix < 700000:
+
                 color = "#00aa00"
+
+            else:
+
+                color = "#222222"
 
             symbol = "€"
 
@@ -451,35 +504,58 @@ def create_map(df):
             elif row["type"] == "Villa":
                 symbol = "🏡"
 
+            elif row["type"] == "Terrain":
+                symbol = "🌳"
+
+            elif row["type"] == "Immeuble":
+                symbol = "🏬"
+
+            elif row["type"] == "Atelier":
+                symbol = "🏭"
+
             popup = f"""
 <b>{row['type']}</b><br><br>
+
 💰 Prix : {row['prix']} €<br>
+
 📐 Surface : {row['surface']} m²<br>
+
 🚪 Pièces : {row['pieces']}<br>
+
 📍 CP : {row['cp']}<br><br>
+
 <a href="{row['url']}" target="_blank">
 Voir annonce
 </a>
 """
 
             html = f"""
-<div style="width:42px; display:flex; flex-direction:column; align-items:center;">
-    <div style="
-        background:{color};
-        width:38px;
-        height:38px;
-        border-radius:50%;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        color:white;
-        font-weight:bold;
-        font-size:14px;
-        border:2px solid white;
-        box-shadow:0 0 4px rgba(0,0,0,0.4);
-    ">
-        {symbol}
-    </div>
+<div style="
+width:42px;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+background:transparent;
+">
+
+<div style="
+background:{color};
+width:38px;
+height:38px;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+color:white;
+font-weight:bold;
+font-size:14px;
+border:2px solid white;
+box-shadow:0 0 4px rgba(0,0,0,0.4);
+">
+{symbol}
+</div>
+
 </div>
 """
 
@@ -527,11 +603,13 @@ async def main():
 
         df = await scrape()
 
-        print(
-            f"📦 TOTAL = {len(df)}"
-        )
+        print("")
+        print(f"📦 TOTAL = {len(df)}")
 
         if len(df) == 0:
+
+            print("❌ AUCUNE ANNONCE")
+
             return
 
         df.to_csv(
