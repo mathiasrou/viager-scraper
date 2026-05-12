@@ -1,7 +1,7 @@
 # =========================================================
 # AVOVENTES.FR
-# VERSION COMPLETE GITHUB
-# ANTI-BLOCK / PLAYWRIGHT
+# VERSION DEBUG COMPLETE
+# GITHUB / PLAYWRIGHT / API DETECTION
 # =========================================================
 
 import asyncio
@@ -11,6 +11,7 @@ import folium
 import traceback
 import os
 import requests
+import json
 
 from playwright.async_api import async_playwright
 from folium.features import DivIcon
@@ -170,11 +171,8 @@ def extract_price(txt):
         for m in matches:
 
             m = re.sub(
-
                 r"\s+",
-
                 "",
-
                 m
             )
 
@@ -213,7 +211,6 @@ def extract_surface(txt):
         for m in matches:
 
             vals.append(
-
                 float(
                     m.replace(",", ".")
                 )
@@ -235,14 +232,11 @@ def extract_cp(txt):
     try:
 
         m = re.findall(
-
             r"\b(\d{5})\b",
-
             txt
         )
 
         if len(m) > 0:
-
             return m[0]
 
     except:
@@ -256,11 +250,8 @@ def extract_rooms(txt):
     try:
 
         m = re.search(
-
             r"(\d+)\s*pi[eè]ce",
-
             txt,
-
             re.I
         )
 
@@ -274,40 +265,32 @@ def extract_rooms(txt):
 
 
 # =========================================================
-# GEOLOCALISATION
+# GEO
 # =========================================================
 
 def geolocate(df):
 
-    geo = pd.read_csv(
-        CSV_CP
-    )
+    geo = pd.read_csv(CSV_CP)
 
     geo = geo[[
-
         "code_postal",
         "latitude",
         "longitude"
-
     ]]
 
     geo.columns = [
-
         "cp",
         "lat",
         "lon"
-
     ]
 
     geo["cp"] = (
-
         geo["cp"]
         .astype(str)
         .str.strip()
     )
 
     df["cp"] = (
-
         df["cp"]
         .fillna("")
         .astype(str)
@@ -316,21 +299,17 @@ def geolocate(df):
     )
 
     df = df.merge(
-
         geo,
-
         on="cp",
-
         how="left"
     )
 
+    print("")
+    print("================================================")
+    print("📍 GEOLOCALISATION")
+    print("================================================")
     print(
-
-        "📍 GEOLOCALISATION OK :",
-
-        df["lat"].notna().sum(),
-
-        "annonces"
+        f"📍 {df['lat'].notna().sum()} annonces géolocalisées"
     )
 
     return df
@@ -346,7 +325,19 @@ async def scrape():
 
     seen = set()
 
+    api_jsons = []
+
+    print("")
+    print("================================================")
+    print("🚀 DEBUT SCRAPE AVOVENTES")
+    print("================================================")
+
     async with async_playwright() as p:
+
+        print("")
+        print("================================================")
+        print("🌐 OUVERTURE NAVIGATEUR")
+        print("================================================")
 
         browser = await p.chromium.launch(
 
@@ -354,9 +345,9 @@ async def scrape():
 
             args=[
 
-                "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
-                "--disable-dev-shm-usage"
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled"
 
             ]
         )
@@ -364,7 +355,6 @@ async def scrape():
         context = await browser.new_context(
 
             user_agent=(
-
                 "Mozilla/5.0 "
                 "(Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 "
@@ -372,16 +362,19 @@ async def scrape():
                 "Chrome/122.0.0.0 Safari/537.36"
             ),
 
-            viewport={
+            locale="fr-FR",
 
+            viewport={
                 "width": 1600,
                 "height": 900
-            },
-
-            locale="fr-FR"
+            }
         )
 
         page = await context.new_page()
+
+        # =========================================
+        # ANTI WEBDRIVER
+        # =========================================
 
         await page.add_init_script("""
 
@@ -391,27 +384,92 @@ Object.defineProperty(navigator, 'webdriver', {
 
 """)
 
-        print("🌐 OUVERTURE")
+        # =========================================
+        # INTERCEPTION API
+        # =========================================
 
-        await page.goto(
+        async def handle_response(response):
 
-            BASE_URL,
+            try:
 
-            timeout=90000
+                url = response.url
+
+                ctype = response.headers.get(
+                    "content-type",
+                    ""
+                )
+
+                if "json" in ctype.lower():
+
+                    print("")
+                    print("📡 JSON DETECTE")
+                    print(url)
+
+                    try:
+
+                        data = await response.json()
+
+                        api_jsons.append({
+
+                            "url": url,
+
+                            "data": data
+
+                        })
+
+                        print("✅ JSON CAPTURE")
+
+                    except Exception as e:
+
+                        print("❌ ERREUR JSON")
+                        print(e)
+
+            except:
+                pass
+
+        page.on(
+            "response",
+            handle_response
         )
 
-        print("⏳ ATTENTE DOM")
+        # =========================================
+        # OUVERTURE PAGE
+        # =========================================
+
+        print("")
+        print("================================================")
+        print("🌐 OUVERTURE URL")
+        print("================================================")
+        print(BASE_URL)
+
+        await page.goto(
+            BASE_URL,
+            timeout=120000
+        )
+
+        print("")
+        print("================================================")
+        print("⏳ ATTENTE CHARGEMENT")
+        print("================================================")
 
         await page.wait_for_load_state(
             "networkidle"
         )
 
-        await page.wait_for_timeout(10000)
+        await page.wait_for_timeout(15000)
 
-        # scroll progressif
-        for i in range(12):
+        # =========================================
+        # SCROLL
+        # =========================================
 
-            print(f"🖱️ SCROLL {i+1}/12")
+        print("")
+        print("================================================")
+        print("🖱️ SCROLL")
+        print("================================================")
+
+        for i in range(15):
+
+            print(f"🖱️ SCROLL {i+1}/15")
 
             await page.evaluate("""
 
@@ -422,75 +480,72 @@ window.scrollBy(
 
 """)
 
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(2500)
 
-        # debug html
+        # =========================================
+        # SAVE HTML
+        # =========================================
+
+        print("")
+        print("================================================")
+        print("💾 SAUVEGARDE HTML")
+        print("================================================")
+
         html = await page.content()
 
         with open(
-
             "debug_avoventes.html",
-
             "w",
-
             encoding="utf-8"
-
         ) as f:
 
             f.write(html)
 
-        print("💾 HTML DEBUG SAUVEGARDE")
+        print("✅ HTML SAUVEGARDE")
 
-        print("🔎 RECHERCHE DES BLOCS")
-
-        selectors = [
-
-            ".item",
-            ".bien",
-            ".card",
-            ".card-body",
-            ".annonce",
-            ".result",
-            ".property",
-            ".vente",
-            "article",
-            ".grid-item",
-            ".col-lg-4",
-            ".col-md-4",
-            ".thumbnail"
-
-        ]
-
-        articles = []
-
-        for sel in selectors:
-
-            try:
-
-                found = await page.query_selector_all(sel)
-
-                print(f"{sel} -> {len(found)}")
-
-                if len(found) > len(articles):
-
-                    articles = found
-
-            except:
-                pass
+        # =========================================
+        # SAVE JSON
+        # =========================================
 
         print("")
-        print(f"🧩 TOTAL BLOCS = {len(articles)}")
+        print("================================================")
+        print("📡 JSONS CAPTURES")
+        print("================================================")
 
-        for article in articles:
+        print(f"📡 TOTAL JSON = {len(api_jsons)}")
+
+        with open(
+            "debug_api.json",
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                api_jsons,
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
+
+        print("✅ JSON DEBUG SAUVEGARDE")
+
+        # =========================================
+        # PARSE JSON
+        # =========================================
+
+        print("")
+        print("================================================")
+        print("🔎 ANALYSE JSON")
+        print("================================================")
+
+        for block in api_jsons:
 
             try:
 
-                txt = clean(
-                    await article.inner_text()
+                txt = json.dumps(
+                    block,
+                    ensure_ascii=False
                 )
-
-                if len(txt) < 40:
-                    continue
 
                 txt_low = txt.lower()
 
@@ -503,90 +558,81 @@ window.scrollBy(
                         "maison",
                         "villa",
                         "terrain",
-                        "immeuble",
-                        "atelier"
+                        "immeuble"
 
                     ]
                 ):
                     continue
 
-                links = await article.query_selector_all("a")
+                urls = re.findall(
 
-                annonce_url = None
+                    r'https://[^"]+',
 
-                for link in links:
-
-                    href = await link.get_attribute("href")
-
-                    if not href:
-                        continue
-
-                    if (
-                        "/vente/"
-                        not in href
-                        and "/annonce/"
-                        not in href
-                        and "/bien/"
-                        not in href
-                    ):
-                        continue
-
-                    if href.startswith("/"):
-
-                        annonce_url = (
-                            "https://avoventes.fr"
-                            + href
-                        )
-
-                    else:
-
-                        annonce_url = href
-
-                    break
-
-                if annonce_url is None:
-                    continue
-
-                if annonce_url in seen:
-                    continue
-
-                seen.add(annonce_url)
-
-                row = {
-
-                    "url": annonce_url,
-
-                    "txt": txt,
-
-                    "prix": extract_price(txt),
-
-                    "surface": extract_surface(txt),
-
-                    "cp": extract_cp(txt),
-
-                    "pieces": extract_rooms(txt),
-
-                    "type": detect_type(txt)
-
-                }
-
-                rows.append(row)
-
-                print(
-
-                    f"✅ {row['type']} | "
-                    f"{row['prix']}€ | "
-                    f"{row['surface']}m²"
+                    txt
                 )
+
+                if len(urls) == 0:
+                    continue
+
+                for u in urls:
+
+                    if u in seen:
+                        continue
+
+                    if "avoventes.fr" not in u:
+                        continue
+
+                    seen.add(u)
+
+                    row = {
+
+                        "url": u,
+
+                        "txt": txt[:3000],
+
+                        "prix": extract_price(txt),
+
+                        "surface": extract_surface(txt),
+
+                        "cp": extract_cp(txt),
+
+                        "pieces": extract_rooms(txt),
+
+                        "type": detect_type(txt)
+
+                    }
+
+                    rows.append(row)
+
+                    print("")
+                    print("✅ ANNONCE")
+                    print(f"TYPE : {row['type']}")
+                    print(f"PRIX : {row['prix']}")
+                    print(f"SURFACE : {row['surface']}")
+                    print(f"CP : {row['cp']}")
+                    print(f"URL : {row['url']}")
 
             except Exception as e:
 
-                print("❌ ARTICLE")
+                print("")
+                print("❌ ERREUR PARSE JSON")
                 print(e)
 
         await browser.close()
 
     df = pd.DataFrame(rows)
+
+    if len(df) > 0:
+
+        df = df.drop_duplicates(
+            subset=["url"]
+        )
+
+    print("")
+    print("================================================")
+    print("📦 RESULTAT FINAL")
+    print("================================================")
+    print(f"📦 TOTAL = {len(df)}")
 
     return df
 
@@ -598,11 +644,8 @@ window.scrollBy(
 def create_map(df):
 
     m = folium.Map(
-
         location=[46.5, 2.5],
-
         zoom_start=6,
-
         tiles="CartoDB positron"
     )
 
@@ -612,10 +655,6 @@ def create_map(df):
     background:transparent !important;
     border:none !important;
     box-shadow:none !important;
-}
-.my-div-icon{
-    background:transparent !important;
-    border:none !important;
 }
 </style>
 """
@@ -630,48 +669,6 @@ def create_map(df):
 
             if pd.isna(row["lat"]):
                 continue
-
-            prix = row["prix"]
-
-            if prix is None:
-
-                color = "#666666"
-
-            elif prix < 100000:
-
-                color = "#ff0000"
-
-            elif prix < 300000:
-
-                color = "#8000ff"
-
-            elif prix < 700000:
-
-                color = "#00aa00"
-
-            else:
-
-                color = "#222222"
-
-            symbol = "€"
-
-            if row["type"] == "Appartement":
-                symbol = "🏢"
-
-            elif row["type"] == "Maison":
-                symbol = "🏠"
-
-            elif row["type"] == "Villa":
-                symbol = "🏡"
-
-            elif row["type"] == "Terrain":
-                symbol = "🌳"
-
-            elif row["type"] == "Immeuble":
-                symbol = "🏬"
-
-            elif row["type"] == "Atelier":
-                symbol = "🏭"
 
             popup = f"""
 <b>{row['type']}</b><br><br>
@@ -689,34 +686,14 @@ Voir annonce
 </a>
 """
 
-            html = f"""
+            html = """
 <div style="
-width:42px;
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
-background:transparent;
-">
-
-<div style="
-background:{color};
-width:38px;
-height:38px;
+background:red;
+width:22px;
+height:22px;
 border-radius:50%;
-display:flex;
-align-items:center;
-justify-content:center;
-color:white;
-font-weight:bold;
-font-size:14px;
 border:2px solid white;
-box-shadow:0 0 4px rgba(0,0,0,0.4);
-">
-{symbol}
-</div>
-
-</div>
+"></div>
 """
 
             marker = folium.Marker(
@@ -732,14 +709,9 @@ box-shadow:0 0 4px rgba(0,0,0,0.4);
                 ),
 
                 icon=DivIcon(
-
                     html=html,
-
-                    class_name="my-div-icon",
-
-                    icon_size=(42, 42),
-
-                    icon_anchor=(21, 21)
+                    icon_size=(22, 22),
+                    icon_anchor=(11, 11)
                 )
             )
 
@@ -752,6 +724,10 @@ box-shadow:0 0 4px rgba(0,0,0,0.4);
 
     m.save(OUTPUT_MAP)
 
+    print("")
+    print("================================================")
+    print("🗺️ CARTE")
+    print("================================================")
     print("✅ CARTE SAUVEGARDEE")
 
 
@@ -763,22 +739,25 @@ async def main():
 
     try:
 
-        print("🚀 SCRAPING AVOVENTES")
-
         df = await scrape()
-
-        print("")
-        print(f"📦 TOTAL = {len(df)}")
 
         if len(df) == 0:
 
+            print("")
+            print("================================================")
             print("❌ AUCUNE ANNONCE")
+            print("================================================")
 
             send_telegram(
-                "❌ AVOVENTES : aucune annonce détectée"
+                "❌ AVOVENTES : aucune annonce"
             )
 
             return
+
+        print("")
+        print("================================================")
+        print("💾 CSV")
+        print("================================================")
 
         df.to_csv(
 
@@ -791,11 +770,9 @@ async def main():
             encoding="utf-8-sig"
         )
 
-        print("💾 HISTORIQUE SAUVEGARDE")
+        print("✅ CSV SAUVEGARDE")
 
         df = geolocate(df)
-
-        print("📍 GEO OK")
 
         create_map(df)
 
@@ -807,11 +784,18 @@ async def main():
             f"{len(df)} annonces"
         )
 
+        print("")
+        print("================================================")
         print("✅ FIN")
+        print("================================================")
 
     except Exception as e:
 
-        print("❌ MAIN")
+        print("")
+        print("================================================")
+        print("❌ ERREUR MAIN")
+        print("================================================")
+
         print(e)
 
         traceback.print_exc()
