@@ -81,6 +81,16 @@ jobs:
           python encheres_immo.py
 
       # =====================================================
+      # SCRIPT ENCHERES IMMONOTAIRES
+      # =====================================================
+
+      - name: Run Encheres Immonotaires scraper
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python immonotaires.py
+      # =====================================================
       # COMMIT HISTORIQUES
       # =====================================================
 
@@ -92,6 +102,7 @@ jobs:
 
           git add historique_ids.csv
           git add historique_immo.csv
+          git add historique_immonotaires.csv
 
           git commit -m "update historiques" || echo "no changes"
 
