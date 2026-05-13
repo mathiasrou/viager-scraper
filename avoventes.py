@@ -1,8 +1,3 @@
-# =========================================================
-# AVOVENTES SCRAPER + HISTORIQUE + CARTE
-# VERSION PROPRE DEFINITIVE
-# =========================================================
-
 import asyncio
 import pandas as pd
 import re
@@ -11,10 +6,7 @@ import traceback
 import os
 import requests
 
-from datetime import datetime
-
 from playwright.async_api import async_playwright
-
 from folium.features import DivIcon
 
 
@@ -44,15 +36,23 @@ def send_telegram(message):
         print("❌ TELEGRAM NON CONFIGURE")
         return
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    try:
 
-    requests.post(
-        url,
-        data={
-            "chat_id": chat_id,
-            "text": message
-        }
-    )
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+        requests.post(
+            url,
+            data={
+                "chat_id": chat_id,
+                "text": message
+            },
+            timeout=30
+        )
+
+    except Exception as e:
+
+        print("❌ TELEGRAM")
+        print(e)
 
 
 def send_file(path):
@@ -63,15 +63,23 @@ def send_file(path):
     if not token or not chat_id:
         return
 
-    url = f"https://api.telegram.org/bot{token}/sendDocument"
+    try:
 
-    with open(path, "rb") as f:
+        url = f"https://api.telegram.org/bot{token}/sendDocument"
 
-        requests.post(
-            url,
-            data={"chat_id": chat_id},
-            files={"document": f}
-        )
+        with open(path, "rb") as f:
+
+            requests.post(
+                url,
+                data={"chat_id": chat_id},
+                files={"document": f},
+                timeout=60
+            )
+
+    except Exception as e:
+
+        print("❌ TELEGRAM FILE")
+        print(e)
 
 
 # =========================================================
@@ -90,11 +98,7 @@ def clean(txt):
     txt = txt.replace("\xa0", " ")
     txt = txt.replace("\u202f", " ")
 
-    txt = re.sub(
-        r"\s+",
-        " ",
-        txt
-    )
+    txt = re.sub(r"\s+", " ", txt)
 
     return txt.strip()
 
@@ -145,10 +149,7 @@ def extract_price(txt):
         if not m:
             return None
 
-        val = (
-            m.group(1)
-            .replace(" ", "")
-        )
+        val = m.group(1).replace(" ", "")
 
         return int(val)
 
@@ -160,10 +161,7 @@ def extract_cp(txt):
 
     try:
 
-        m = re.findall(
-            r"\b(\d{5})\b",
-            txt
-        )
+        m = re.findall(r"\b(\d{5})\b", txt)
 
         if len(m) > 0:
             return m[0]
@@ -287,9 +285,7 @@ async def scrape():
 
             await page.locator(
                 "button:has-text('Tout accepter')"
-            ).click(
-                timeout=5000
-            )
+            ).click(timeout=5000)
 
             print("🍪 COOKIES OK")
 
@@ -307,9 +303,15 @@ async def scrape():
             full_page=True
         )
 
-        body = await page.locator(
-            "body"
-        ).inner_text()
+        body = await page.locator("body").inner_text()
+
+        with open(
+            "debug_avoventes.html",
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            f.write(body)
 
         blocs = re.split(
             r"Vente aux enchères",
@@ -329,8 +331,6 @@ async def scrape():
 
                 row = {}
 
-                row["txt"] = bloc
-
                 row["type"] = detect_type(bloc)
 
                 row["prix"] = extract_price(bloc)
@@ -347,9 +347,7 @@ async def scrape():
                     "Date de la vente"
                 )[0]
 
-                morceaux = lignes.split(
-                    "France"
-                )
+                morceaux = lignes.split("France")
 
                 if len(morceaux) > 0:
                     titre = morceaux[0][-150:]
@@ -358,21 +356,20 @@ async def scrape():
 
                 row["url"] = BASE_URL
 
-                # CLE UNIQUE
+                # =================================================
+                # ID UNIQUE
+                # =================================================
+
                 row["id_unique"] = (
-                    str(row["titre"])
-                    + "_"
-                    + str(row["cp"])
-                    + "_"
-                    + str(row["prix"])
+                    f"{row['titre']}_"
+                    f"{row['cp']}_"
+                    f"{row['prix']}"
                 )
 
                 if row["id_unique"] in seen:
                     continue
 
-                seen.add(
-                    row["id_unique"]
-                )
+                seen.add(row["id_unique"])
 
                 rows.append(row)
 
@@ -389,9 +386,7 @@ async def scrape():
 
         await browser.close()
 
-    df = pd.DataFrame(rows)
-
-    return df
+    return pd.DataFrame(rows)
 
 
 # =========================================================
@@ -400,9 +395,7 @@ async def scrape():
 
 def geolocate(df):
 
-    geo = pd.read_csv(
-        CSV_CP
-    )
+    geo = pd.read_csv(CSV_CP)
 
     geo = geo[[
         "code_postal",
@@ -446,7 +439,7 @@ def geolocate(df):
 
 
 # =========================================================
-# CREATE MAP
+# MAP
 # =========================================================
 
 def create_map(df):
@@ -594,14 +587,30 @@ async def main():
 
         if os.path.exists(HISTORY_FILE):
 
-            old_df = pd.read_csv(
-                HISTORY_FILE,
-                sep=";"
-            )
+            try:
+
+                old_df = pd.read_csv(
+                    HISTORY_FILE,
+                    sep=";",
+                    on_bad_lines="skip"
+                )
+
+            except:
+
+                old_df = pd.DataFrame()
 
         else:
 
             old_df = pd.DataFrame()
+
+        # sécurité
+        if "id_unique" not in old_df.columns:
+
+            print("⚠️ HISTORIQUE CORROMPU")
+
+            old_df = pd.DataFrame(
+                columns=["id_unique"]
+            )
 
         if len(old_df) > 0:
 
@@ -614,7 +623,10 @@ async def main():
 
             old_ids = set()
 
-        # nouvelles annonces
+        # =====================================================
+        # NOUVELLES
+        # =====================================================
+
         new_df = df[
             ~df["id_unique"]
             .astype(str)
@@ -625,7 +637,10 @@ async def main():
             f"🆕 NOUVELLES = {len(new_df)}"
         )
 
-        # sauvegarde historique
+        # =====================================================
+        # SAVE HISTORIQUE
+        # =====================================================
+
         combined = pd.concat(
             [old_df, df],
             ignore_index=True
@@ -636,6 +651,19 @@ async def main():
             keep="first"
         )
 
+        cols = [
+            "id_unique",
+            "url",
+            "prix",
+            "cp",
+            "type",
+            "date_vente",
+            "status",
+            "titre"
+        ]
+
+        combined = combined[cols]
+
         combined.to_csv(
             HISTORY_FILE,
             sep=";",
@@ -645,7 +673,10 @@ async def main():
 
         print("💾 HISTORIQUE OK")
 
-        # aucune nouveauté
+        # =====================================================
+        # AUCUNE NOUVEAUTE
+        # =====================================================
+
         if len(new_df) == 0:
 
             send_telegram(
@@ -660,10 +691,8 @@ async def main():
 
         new_df = geolocate(new_df)
 
-        print("📍 GEO OK")
-
         # =====================================================
-        # CARTE
+        # MAP
         # =====================================================
 
         create_map(new_df)
