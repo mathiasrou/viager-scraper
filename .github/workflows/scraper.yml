@@ -62,7 +62,7 @@ jobs:
       - name: Install Python packages
         run: |
 
-          pip install pandas playwright folium requests
+          pip install pandas playwright folium requests beautifulsoup4
 
           playwright install chromium
 
@@ -77,7 +77,7 @@ jobs:
 
         run: |
 
-          python carte_finale_totale.py
+          timeout 10m python carte_finale_totale.py || echo "⏰ Timeout Viager"
 
       # =====================================================
       # ENCHERES IMMO
@@ -90,7 +90,7 @@ jobs:
 
         run: |
 
-          python encheres_immo.py
+          timeout 10m python encheres_immo.py || echo "⏰ Timeout Encheres Immo"
 
       # =====================================================
       # IMMONOTAIRES
@@ -103,7 +103,7 @@ jobs:
 
         run: |
 
-          python immonotaires.py
+          timeout 10m python immonotaires.py || echo "⏰ Timeout Immonotaires"
 
       # =====================================================
       # AVOVENTES
@@ -116,22 +116,24 @@ jobs:
 
         run: |
 
-          xvfb-run python avoventes.py
+          timeout 10m xvfb-run python avoventes.py || echo "⏰ Timeout Avoventes"
 
       # =====================================================
       # DEBUG FILES
       # =====================================================
 
-      - name: Upload debug avoventes
-        uses: actions/upload-artifact@v4
+      # - name: Upload debug avoventes
+       #  uses: actions/upload-artifact@v4
 
-        with:
-          name: debug-avoventes
+        # with:
+          # name: debug-avoventes
 
-          path: |
-            debug_avoventes.html
-            debug_avoventes.png
-            debug_api.json
+       #    path: |
+         #    debug_avoventes.html
+           #  debug_avoventes.png
+             #debug_api.json
+
+           #if-no-files-found: ignore
 
       # =====================================================
       # COMMIT HISTORIQUES
@@ -152,6 +154,6 @@ jobs:
 
           git commit -m "update historiques" || echo "no changes"
 
-          git pull --rebase
+          git pull --rebase || true
 
-          git push
+          git push || true
