@@ -1,45 +1,89 @@
 # =========================================================
 # IMMO NOTAIRES ENCHERES
-# VERSION DEBUG ULTIME
-# OBJECTIF :
-# - comprendre EXACTEMENT ce qui casse
-# - logger DOM
-# - logger API
-# - logger JSON
-# - logger HTML
-# - logger JS
-# - logger console navigateur
-# - logger requêtes réseau
-# - logger réponses
+# VERSION API JSON
 # =========================================================
 
-import asyncio
-import json
+import pandas as pd
+import requests
+import folium
 import traceback
-import re
 import os
+import re
+import json
 
-from playwright.async_api import async_playwright
+from folium.features import DivIcon
 
 
 # =========================================================
 # CONFIG
 # =========================================================
 
-BASE_URL = "https://immonotairesencheres.com/bien?page=0"
+API_URL = "https://immonotairesencheres.com/api/search"
 
-HEADLESS = True
+CSV_CP = "base-officielle-codes-postaux.csv"
 
-DEBUG_DIR = "debug_immonotaires"
+HISTORY_FILE = "historique_immonotaires.csv"
 
-os.makedirs(
-    DEBUG_DIR,
-    exist_ok=True
-)
+OUTPUT_MAP = "carte_immonotaires.html"
+
+PAGE_SIZE = 100
 
 
 # =========================================================
-# HELPERS
+# TELEGRAM
+# =========================================================
+
+def send_telegram(message):
+
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        print("❌ TELEGRAM NON CONFIGURE")
+        return
+
+    try:
+
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data={
+                "chat_id": chat_id,
+                "text": message
+            },
+            timeout=20
+        )
+
+    except Exception as e:
+
+        print(e)
+
+
+def send_file(path):
+
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        return
+
+    try:
+
+        with open(path, "rb") as f:
+
+            requests.post(
+                f"https://api.telegram.org/bot{token}/sendDocument",
+                data={"chat_id": chat_id},
+                files={"document": f},
+                timeout=60
+            )
+
+    except Exception as e:
+
+        print(e)
+
+
+# =========================================================
+# CLEAN
 # =========================================================
 
 def clean(txt):
@@ -58,565 +102,575 @@ def clean(txt):
     return txt.strip()
 
 
-def save_text(name, txt):
+# =========================================================
+# TYPE
+# =========================================================
 
-    path = os.path.join(
-        DEBUG_DIR,
-        name
+def detect_type(src):
+
+    try:
+
+        return (
+            src
+            .get("referentiel_type_de_bien", {})
+            .get("valeur", "Autre")
+        )
+
+    except:
+        return "Autre"
+
+
+# =========================================================
+# GEOLOCALISATION
+# =========================================================
+
+def geolocate(df):
+
+    geo = pd.read_csv(CSV_CP)
+
+    geo = geo[[
+        "code_postal",
+        "latitude",
+        "longitude"
+    ]]
+
+    geo.columns = [
+        "cp",
+        "lat",
+        "lon"
+    ]
+
+    geo["cp"] = (
+        geo["cp"]
+        .astype(str)
+        .str.strip()
     )
 
-    with open(
-        path,
-        "w",
-        encoding="utf-8"
-    ) as f:
+    df["cp"] = (
+        df["cp"]
+        .fillna("")
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.strip()
+    )
 
-        f.write(txt)
+    df = df.merge(
+        geo,
+        on="cp",
+        how="left"
+    )
 
-    print("💾", path)
+    print(
+        "📍 GEOLOCALISATION OK :",
+        df["lat"].notna().sum(),
+        "annonces"
+    )
+
+    return df
 
 
 # =========================================================
-# NETWORK DEBUG
+# API SCRAPE
 # =========================================================
 
-async def handle_request(request):
+def scrape():
 
-    try:
+    rows = []
+
+    seen = set()
+
+    start = 0
+
+    while True:
 
         print("")
-        print("➡️ REQUEST")
-        print(request.method)
-        print(request.url)
+        print("=" * 60)
+        print(f"📄 OFFSET {start}")
+        print("=" * 60)
 
-        if (
-            "api" in request.url.lower()
-            or "graphql" in request.url.lower()
-            or "bien" in request.url.lower()
-        ):
+        payload = {
 
-            print("🔥 API DETECTEE")
+            "from": start,
 
-            headers = request.headers
+            "size": PAGE_SIZE,
 
-            print("HEADERS :")
+            "query": {
 
-            for k, v in headers.items():
+                "bool": {
 
-                print(k, ":", v)
+                    "must": [
+
+                        {
+                            "term": {
+                                "contentType": "bien"
+                            }
+                        },
+
+                        {
+                            "bool": {
+
+                                "should": [
+
+                                    {
+                                        "range": {
+                                            "montant": {
+                                                "gte": 0
+                                            }
+                                        }
+                                    },
+
+                                    {
+                                        "bool": {
+                                            "must_not": [
+                                                {
+                                                    "exists": {
+                                                        "field": "montant"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+
+                                ],
+
+                                "minimum_should_match": 1
+                            }
+                        }
+
+                    ]
+                }
+            },
+
+            "sort": [
+
+                {
+                    "dateDebut": {
+                        "order": "asc",
+                        "missing": "_last"
+                    }
+                },
+
+                {
+                    "referenceBien.keyword": {
+                        "order": "asc",
+                        "missing": "_last"
+                    }
+                }
+
+            ]
+        }
+
+        try:
+
+            r = requests.post(
+                API_URL,
+                json=payload,
+                timeout=60
+            )
+
+            print("🌐 STATUS =", r.status_code)
+
+            data = r.json()
+
+        except Exception as e:
+
+            print("❌ API")
+            print(e)
+
+            break
+
+        hits = data.get("hits", [])
+
+        print("🧩 HITS =", len(hits))
+
+        if len(hits) == 0:
+            break
+
+        added = 0
+
+        for h in hits:
 
             try:
 
-                post = request.post_data
+                src = h["_source"]
 
-                if post:
+                doc_id = src.get("documentId")
 
-                    print("")
-                    print("POST DATA :")
-                    print(post[:2000])
+                if not doc_id:
+                    continue
 
-            except:
-                pass
-
-    except Exception as e:
-
-        print(e)
-
-
-async def handle_response(response):
-
-    try:
-
-        url = response.url
-
-        ct = response.headers.get(
-            "content-type",
-            ""
-        )
-
-        print("")
-        print("⬅️ RESPONSE")
-        print(response.status)
-        print(url)
-
-        # =========================================
-        # JSON
-        # =========================================
-
-        if "json" in ct.lower():
-
-            print("🔥 JSON DETECTE")
-
-            try:
-
-                data = await response.json()
-
-                txt = json.dumps(
-                    data,
-                    indent=2,
-                    ensure_ascii=False
+                annonce_url = (
+                    "https://immonotairesencheres.com/bien/"
+                    + doc_id
                 )
 
-                print(txt[:3000])
+                if annonce_url in seen:
+                    continue
 
-                filename = (
-                    "json_" +
-                    re.sub(r"[^a-zA-Z0-9]", "_", url)[:120]
-                    + ".json"
+                seen.add(annonce_url)
+
+                titre = clean(
+                    src.get("titre")
                 )
 
-                save_text(
-                    filename,
-                    txt
+                ville = clean(
+                    src.get("ville")
+                )
+
+                cp = clean(
+                    src.get("codePostal")
+                )
+
+                prix = (
+                    src.get("montant")
+                    or src.get("miseAPrixDefinitive")
+                )
+
+                surface = src.get("surface")
+
+                pieces = src.get("nombrePiece")
+
+                type_bien = detect_type(src)
+
+                txt = " | ".join([
+                    titre,
+                    ville,
+                    cp
+                ])
+
+                photo = None
+
+                photos = src.get(
+                    "listePhotos",
+                    []
+                )
+
+                if len(photos) > 0:
+
+                    photo = (
+                        "https://immonotairesencheres.com"
+                        + photos[0]["url"]
+                    )
+
+                row = {
+
+                    "url": annonce_url,
+
+                    "txt": txt,
+
+                    "titre": titre,
+
+                    "ville": ville,
+
+                    "cp": cp,
+
+                    "prix": prix,
+
+                    "surface": surface,
+
+                    "pieces": pieces,
+
+                    "type": type_bien,
+
+                    "photo": photo
+
+                }
+
+                rows.append(row)
+
+                added += 1
+
+                print(
+                    f"✅ {type_bien} | "
+                    f"{prix}€ | "
+                    f"{cp}"
                 )
 
             except Exception as e:
 
-                print("❌ JSON")
+                print("❌ HIT")
                 print(e)
 
-        # =========================================
-        # HTML
-        # =========================================
+        print("")
+        print("➕ AJOUTES =", added)
 
-        elif "html" in ct.lower():
+        if added == 0:
+            break
 
-            try:
+        start += PAGE_SIZE
 
-                body = await response.text()
+    df = pd.DataFrame(rows)
 
-                if (
-                    "annonce" in body.lower()
-                    or "prix" in body.lower()
-                    or "surface" in body.lower()
-                    or "/bien/" in body.lower()
-                ):
+    if len(df) > 0:
 
-                    print("🔥 HTML INTERESSANT")
+        df = df.drop_duplicates(
+            subset="url"
+        )
 
-                    filename = (
-                        "html_" +
-                        re.sub(r"[^a-zA-Z0-9]", "_", url)[:120]
-                        + ".html"
-                    )
-
-                    save_text(
-                        filename,
-                        body[:500000]
-                    )
-
-            except:
-                pass
-
-    except Exception as e:
-
-        print(e)
+    return df
 
 
 # =========================================================
-# MAIN DEBUG
+# MAP
 # =========================================================
 
-async def main():
+def create_map(df):
 
-    async with async_playwright() as p:
+    m = folium.Map(
+        location=[46.5, 2.5],
+        zoom_start=6,
+        tiles="CartoDB positron"
+    )
 
-        browser = await p.chromium.launch(
-            headless=HEADLESS
-        )
+    css = """
+<style>
+.leaflet-div-icon{
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
+}
+.my-div-icon{
+    background:transparent !important;
+    border:none !important;
+}
+</style>
+"""
 
-        context = await browser.new_context()
+    m.get_root().html.add_child(
+        folium.Element(css)
+    )
 
-        page = await context.new_page()
+    for _, row in df.iterrows():
 
-        # =================================================
-        # CONSOLE JS
-        # =================================================
+        try:
 
-        page.on(
-            "console",
-            lambda msg:
-            print(
-                f"🖥️ CONSOLE [{msg.type}] :",
-                msg.text
+            if pd.isna(row["lat"]):
+                continue
+
+            prix = row["prix"]
+
+            if prix is None:
+
+                color = "#666666"
+
+            elif prix < 100000:
+
+                color = "#ff0000"
+
+            elif prix < 300000:
+
+                color = "#8000ff"
+
+            elif prix < 700000:
+
+                color = "#00aa00"
+
+            else:
+
+                color = "#222222"
+
+            symbol = "€"
+
+            if row["type"] == "Appartement":
+                symbol = "🏢"
+
+            elif row["type"] == "Maison":
+                symbol = "🏠"
+
+            elif row["type"] == "Villa":
+                symbol = "🏡"
+
+            elif row["type"] == "Terrain":
+                symbol = "🌳"
+
+            elif row["type"] == "Immeuble":
+                symbol = "🏬"
+
+            popup = f"""
+<b>{row['titre']}</b><br><br>
+
+🏠 {row['type']}<br>
+
+💰 {row['prix']} €<br>
+
+📐 {row['surface']} m²<br>
+
+🚪 {row['pieces']} pièces<br>
+
+📍 {row['cp']} {row['ville']}<br><br>
+
+<a href="{row['url']}" target="_blank">
+Voir annonce
+</a>
+"""
+
+            html = f"""
+<div style="
+width:42px;
+display:flex;
+justify-content:center;
+align-items:center;
+">
+
+<div style="
+background:{color};
+width:38px;
+height:38px;
+border-radius:50%;
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:16px;
+border:2px solid white;
+box-shadow:0 0 4px rgba(0,0,0,0.4);
+">
+{symbol}
+</div>
+
+</div>
+"""
+
+            folium.Marker(
+
+                location=[
+                    row["lat"],
+                    row["lon"]
+                ],
+
+                popup=folium.Popup(
+                    popup,
+                    max_width=350
+                ),
+
+                icon=DivIcon(
+                    html=html,
+                    class_name="my-div-icon",
+                    icon_size=(42, 42),
+                    icon_anchor=(21, 21)
+                )
+
+            ).add_to(m)
+
+        except Exception as e:
+
+            print(e)
+
+    m.save(OUTPUT_MAP)
+
+    print("✅ CARTE SAUVEGARDEE")
+
+
+# =========================================================
+# MAIN
+# =========================================================
+
+def main():
+
+    try:
+
+        print("")
+        print("=" * 60)
+        print("🚀 SCRAPING API")
+        print("=" * 60)
+
+        df = scrape()
+
+        print("")
+        print(f"📦 TOTAL = {len(df)}")
+
+        if len(df) == 0:
+
+            print("❌ AUCUNE ANNONCE")
+
+            send_telegram(
+                "❌ IMMO NOTAIRES\nAUCUNE ANNONCE"
             )
-        )
+
+            return
 
         # =================================================
-        # ERREURS JS
+        # HISTORIQUE
         # =================================================
 
-        page.on(
-            "pageerror",
-            lambda e:
-            print(
-                "❌ JS ERROR :",
-                e
-            )
-        )
+        try:
 
-        # =================================================
-        # REQUESTS
-        # =================================================
-
-        page.on(
-            "request",
-            lambda req:
-            asyncio.create_task(
-                handle_request(req)
-            )
-        )
-
-        # =================================================
-        # RESPONSES
-        # =================================================
-
-        page.on(
-            "response",
-            lambda res:
-            asyncio.create_task(
-                handle_response(res)
-            )
-        )
-
-        # =================================================
-        # NAVIGATION
-        # =================================================
-
-        print("")
-        print("=" * 80)
-        print("🚀 GOTO")
-        print("=" * 80)
-
-        response = await page.goto(
-            BASE_URL,
-            wait_until="networkidle",
-            timeout=120000
-        )
-
-        print("")
-        print("🌐 STATUS =", response.status)
-
-        # =================================================
-        # ATTENTE LONGUE
-        # =================================================
-
-        print("")
-        print("⏳ ATTENTE JS")
-
-        await page.wait_for_timeout(15000)
-
-        # =================================================
-        # SCROLL
-        # =================================================
-
-        print("")
-        print("🖱️ SCROLL")
-
-        for i in range(15):
-
-            await page.mouse.wheel(
-                0,
-                5000
+            old = pd.read_csv(
+                HISTORY_FILE,
+                sep=";"
             )
 
-            await page.wait_for_timeout(1500)
-
-            print(
-                "SCROLL",
-                i + 1
+            old_urls = set(
+                old["url"]
+                .astype(str)
             )
 
-        # =================================================
-        # HTML FINAL
-        # =================================================
+            print("📚 HISTORIQUE =", len(old))
 
-        print("")
-        print("=" * 80)
-        print("💾 HTML FINAL")
-        print("=" * 80)
+        except:
 
-        html = await page.content()
+            print("⚠️ HISTORIQUE CORROMPU")
 
-        save_text(
-            "final_page.html",
-            html
-        )
+            old_urls = set()
 
-        print("")
-        print("TAILLE HTML =", len(html))
-
-        # =================================================
-        # SCREENSHOT
-        # =================================================
-
-        print("")
-        print("📸 SCREENSHOT")
-
-        await page.screenshot(
-            path=os.path.join(
-                DEBUG_DIR,
-                "full.png"
-            ),
-            full_page=True
-        )
-
-        # =================================================
-        # BODY TEXT
-        # =================================================
-
-        print("")
-        print("=" * 80)
-        print("📄 BODY TEXT")
-        print("=" * 80)
-
-        body = await page.locator(
-            "body"
-        ).inner_text()
-
-        body = clean(body)
-
-        print(body[:5000])
-
-        save_text(
-            "body_text.txt",
-            body
-        )
-
-        # =================================================
-        # TEST SELECTEURS
-        # =================================================
-
-        print("")
-        print("=" * 80)
-        print("🔍 TEST SELECTEURS")
-        print("=" * 80)
-
-        selectors = [
-
-            "article",
-            "article.node-property",
-
-            ".card",
-            ".property",
-            ".property-card",
-            ".listing",
-            ".annonce",
-
-            "a[href*='/bien/']",
-
-            "[class*='property']",
-            "[class*='annonce']",
-            "[class*='listing']",
-            "[class*='card']",
-
-            "[href*='/bien/']"
-
+        new_df = df[
+            ~df["url"].isin(old_urls)
         ]
 
-        for sel in selectors:
-
-            try:
-
-                els = await page.query_selector_all(
-                    sel
-                )
-
-                print("")
-                print(sel)
-                print("COUNT =", len(els))
-
-                if len(els) > 0:
-
-                    for i, el in enumerate(els[:5]):
-
-                        try:
-
-                            txt = clean(
-                                await el.inner_text()
-                            )
-
-                            print("")
-                            print(f"--- ELEMENT {i} ---")
-
-                            print(txt[:500])
-
-                            try:
-
-                                href = await el.get_attribute(
-                                    "href"
-                                )
-
-                                if href:
-                                    print("HREF =", href)
-
-                            except:
-                                pass
-
-                        except Exception as e:
-
-                            print(e)
-
-            except Exception as e:
-
-                print(e)
+        print(
+            "🆕 NOUVELLES =",
+            len(new_df)
+        )
 
         # =================================================
-        # JS VARIABLES
+        # SAVE
         # =================================================
+
+        df.to_csv(
+            HISTORY_FILE,
+            sep=";",
+            index=False,
+            encoding="utf-8-sig"
+        )
+
+        print("💾 HISTORIQUE OK")
+
+        # =================================================
+        # GEO
+        # =================================================
+
+        df = geolocate(df)
+
+        # =================================================
+        # MAP
+        # =================================================
+
+        create_map(df)
+
+        # =================================================
+        # TELEGRAM
+        # =================================================
+
+        send_file(OUTPUT_MAP)
+
+        send_telegram(
+            f"✅ IMMO NOTAIRES\n"
+            f"📦 TOTAL = {len(df)}\n"
+            f"🆕 NOUVELLES = {len(new_df)}"
+        )
+
+        print("✅ FIN")
+
+    except Exception as e:
 
         print("")
-        print("=" * 80)
-        print("🧠 VARIABLES JS")
-        print("=" * 80)
+        print("❌ MAIN")
+        print(e)
 
-        try:
+        traceback.print_exc()
 
-            js_data = await page.evaluate(
-                """
-() => {
-
-    const out = {}
-
-    for (const k in window) {
-
-        try {
-
-            const v = window[k]
-
-            if (
-                typeof v === 'object'
-                || typeof v === 'array'
-            ) {
-
-                const s = JSON.stringify(v)
-
-                if (
-                    s &&
-                    (
-                        s.includes('prix')
-                        || s.includes('surface')
-                        || s.includes('/bien/')
-                        || s.includes('enchere')
-                    )
-                ) {
-
-                    out[k] = s.slice(0, 5000)
-                }
-            }
-
-        } catch(e) {}
-
-    }
-
-    return out
-}
-"""
-            )
-
-            txt = json.dumps(
-                js_data,
-                indent=2,
-                ensure_ascii=False
-            )
-
-            print(txt[:5000])
-
-            save_text(
-                "window_variables.json",
-                txt
-            )
-
-        except Exception as e:
-
-            print(e)
-
-        # =================================================
-        # LOCAL STORAGE
-        # =================================================
-
-        print("")
-        print("=" * 80)
-        print("💾 LOCAL STORAGE")
-        print("=" * 80)
-
-        try:
-
-            storage = await page.evaluate(
-                """
-() => {
-
-    const out = {}
-
-    for (let i = 0; i < localStorage.length; i++) {
-
-        const k = localStorage.key(i)
-
-        out[k] = localStorage.getItem(k)
-    }
-
-    return out
-}
-"""
-            )
-
-            txt = json.dumps(
-                storage,
-                indent=2,
-                ensure_ascii=False
-            )
-
-            print(txt)
-
-            save_text(
-                "local_storage.json",
-                txt
-            )
-
-        except Exception as e:
-
-            print(e)
-
-        # =================================================
-        # COOKIES
-        # =================================================
-
-        print("")
-        print("=" * 80)
-        print("🍪 COOKIES")
-        print("=" * 80)
-
-        try:
-
-            cookies = await context.cookies()
-
-            txt = json.dumps(
-                cookies,
-                indent=2,
-                ensure_ascii=False
-            )
-
-            print(txt)
-
-            save_text(
-                "cookies.json",
-                txt
-            )
-
-        except Exception as e:
-
-            print(e)
-
-        # =================================================
-        # FIN
-        # =================================================
-
-        print("")
-        print("=" * 80)
-        print("✅ FIN DEBUG")
-        print("=" * 80)
-
-        await browser.close()
+        send_telegram(
+            f"❌ ERREUR\n{e}"
+        )
 
 
 # =========================================================
@@ -625,17 +679,4 @@ async def main():
 
 if __name__ == "__main__":
 
-    try:
-
-        asyncio.run(main())
-
-    except Exception as e:
-
-        print("")
-        print("=" * 80)
-        print("❌ ERREUR FATALE")
-        print("=" * 80)
-
-        print(e)
-
-        traceback.print_exc()
+    main()
