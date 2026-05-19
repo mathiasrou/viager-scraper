@@ -1,6 +1,6 @@
 # =========================================================
 # IMMO NOTAIRES ENCHERES
-# VERSION COMPLETE CORRIGEE
+# VERSION ULTRA ROBUSTE DEBUG + MULTI SCRAP
 # =========================================================
 
 import asyncio
@@ -10,6 +10,7 @@ import folium
 import traceback
 import os
 import requests
+import json
 
 from playwright.async_api import async_playwright
 from folium.features import DivIcon
@@ -23,9 +24,13 @@ BASE_URL = "https://immonotairesencheres.com/bien"
 
 CSV_CP = "base-officielle-codes-postaux.csv"
 
-HISTORY_FILE = "historique_immonotaires.csv"
-
 OUTPUT_MAP = "carte_immonotaires.html"
+
+DEBUG_HTML = "debug_page.html"
+
+HEADLESS = True
+
+MAX_PAGES = 50
 
 
 # =========================================================
@@ -43,13 +48,19 @@ def send_telegram(message):
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
-    requests.post(
-        url,
-        data={
-            "chat_id": chat_id,
-            "text": message
-        }
-    )
+    try:
+
+        requests.post(
+            url,
+            data={
+                "chat_id": chat_id,
+                "text": message
+            },
+            timeout=20
+        )
+
+    except Exception as e:
+        print(e)
 
 
 def send_file(path):
@@ -60,15 +71,21 @@ def send_file(path):
     if not token or not chat_id:
         return
 
-    url = f"https://api.telegram.org/bot{token}/sendDocument"
+    try:
 
-    with open(path, "rb") as f:
+        url = f"https://api.telegram.org/bot{token}/sendDocument"
 
-        requests.post(
-            url,
-            data={"chat_id": chat_id},
-            files={"document": f}
-        )
+        with open(path, "rb") as f:
+
+            requests.post(
+                url,
+                data={"chat_id": chat_id},
+                files={"document": f},
+                timeout=60
+            )
+
+    except Exception as e:
+        print(e)
 
 
 # =========================================================
@@ -87,45 +104,9 @@ def clean(txt):
     txt = txt.replace("\xa0", " ")
     txt = txt.replace("\u202f", " ")
 
-    txt = re.sub(
-        r"\s+",
-        " ",
-        txt
-    )
+    txt = re.sub(r"\s+", " ", txt)
 
     return txt.strip()
-
-
-# =========================================================
-# TYPE
-# =========================================================
-
-def detect_type(txt):
-
-    t = txt.lower()
-
-    if "appartement" in t:
-        return "Appartement"
-
-    if "studio" in t:
-        return "Appartement"
-
-    if "maison" in t:
-        return "Maison"
-
-    if "villa" in t:
-        return "Villa"
-
-    if "terrain" in t:
-        return "Terrain"
-
-    if "immeuble" in t:
-        return "Immeuble"
-
-    if "atelier" in t:
-        return "Atelier"
-
-    return "Autre"
 
 
 # =========================================================
@@ -145,11 +126,7 @@ def extract_price(txt):
 
         for m in matches:
 
-            m = re.sub(
-                r"\s+",
-                "",
-                m
-            )
+            m = re.sub(r"\s+", "", m)
 
             if m.isdigit():
 
@@ -172,7 +149,7 @@ def extract_surface(txt):
     try:
 
         matches = re.findall(
-            r"(\d+(?:[.,]\d+)?)\s?M2",
+            r"(\d+(?:[.,]\d+)?)\s?m²",
             txt,
             re.I
         )
@@ -193,9 +170,7 @@ def extract_surface(txt):
         return max(vals)
 
     except:
-        pass
-
-    return None
+        return None
 
 
 def extract_cp(txt):
@@ -235,15 +210,41 @@ def extract_rooms(txt):
     return None
 
 
+def detect_type(txt):
+
+    t = txt.lower()
+
+    if "appartement" in t:
+        return "Appartement"
+
+    if "studio" in t:
+        return "Appartement"
+
+    if "maison" in t:
+        return "Maison"
+
+    if "villa" in t:
+        return "Villa"
+
+    if "terrain" in t:
+        return "Terrain"
+
+    if "immeuble" in t:
+        return "Immeuble"
+
+    if "local commercial" in t:
+        return "Local commercial"
+
+    return "Autre"
+
+
 # =========================================================
 # GEOLOCALISATION
 # =========================================================
 
 def geolocate(df):
 
-    geo = pd.read_csv(
-        CSV_CP
-    )
+    geo = pd.read_csv(CSV_CP)
 
     geo = geo[[
         "code_postal",
@@ -257,11 +258,7 @@ def geolocate(df):
         "lon"
     ]
 
-    geo["cp"] = (
-        geo["cp"]
-        .astype(str)
-        .str.strip()
-    )
+    geo["cp"] = geo["cp"].astype(str)
 
     df["cp"] = (
         df["cp"]
@@ -287,6 +284,107 @@ def geolocate(df):
 
 
 # =========================================================
+# DEBUG
+# =========================================================
+
+async def debug_page(page):
+
+    try:
+
+        html = await page.content()
+
+        with open(
+            DEBUG_HTML,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            f.write(html)
+
+        print("💾 DEBUG HTML SAUVEGARDE")
+
+        print("")
+        print("=" * 80)
+        print("DEBUG HTML")
+        print("=" * 80)
+
+        print(html[:5000])
+
+        print("=" * 80)
+
+    except Exception as e:
+
+        print("❌ DEBUG")
+        print(e)
+
+
+# =========================================================
+# MULTI SCRAP
+# =========================================================
+
+async def extract_method_1(page):
+
+    print("")
+    print("🔍 METHODE 1 : article.node-property")
+
+    return await page.query_selector_all(
+        "article.node-property"
+    )
+
+
+async def extract_method_2(page):
+
+    print("")
+    print("🔍 METHODE 2 : article")
+
+    return await page.query_selector_all(
+        "article"
+    )
+
+
+async def extract_method_3(page):
+
+    print("")
+    print("🔍 METHODE 3 : liens /bien/")
+
+    return await page.query_selector_all(
+        "a[href*='/bien/']"
+    )
+
+
+async def extract_method_4(page):
+
+    print("")
+    print("🔍 METHODE 4 : cards")
+
+    selectors = [
+        ".card",
+        ".property",
+        ".property-card",
+        ".bien",
+        ".listing",
+        ".annonce"
+    ]
+
+    all_elements = []
+
+    for sel in selectors:
+
+        try:
+
+            els = await page.query_selector_all(sel)
+
+            print(sel, "=", len(els))
+
+            all_elements.extend(els)
+
+        except:
+            pass
+
+    return all_elements
+
+
+# =========================================================
 # SCRAPE
 # =========================================================
 
@@ -299,78 +397,156 @@ async def scrape():
     async with async_playwright() as p:
 
         browser = await p.chromium.launch(
-            headless=True
+            headless=HEADLESS
         )
 
         page = await browser.new_page()
 
-        page_num = 0
+        await page.set_viewport_size({
+            "width": 1600,
+            "height": 3000
+        })
 
-        while True:
-
-            url = (
-                f"{BASE_URL}?page={page_num}"
-            )
+        for page_num in range(MAX_PAGES):
 
             print("")
-            print("=" * 60)
+            print("=" * 80)
             print(f"📄 PAGE {page_num}")
-            print("=" * 60)
+            print("=" * 80)
+
+            url = f"{BASE_URL}?page={page_num}"
 
             print(url)
 
             try:
 
-                await page.goto(
+                response = await page.goto(
                     url,
-                    timeout=60000
+                    timeout=60000,
+                    wait_until="domcontentloaded"
+                )
+
+                print(
+                    "🌐 STATUS =",
+                    response.status if response else "?"
                 )
 
             except Exception as e:
 
-                print("❌ PAGE")
+                print("❌ GOTO")
                 print(e)
 
                 break
 
+            try:
+
+                await page.wait_for_load_state(
+                    "networkidle",
+                    timeout=30000
+                )
+
+            except:
+                pass
+
             await page.wait_for_timeout(5000)
 
-            articles = await page.query_selector_all(
-                "article.node-property"
-            )
+            # scroll forcé
 
-            print(
-                f"🧩 ARTICLES = {len(articles)}"
-            )
+            try:
 
-            if len(articles) == 0:
+                for _ in range(10):
+
+                    await page.mouse.wheel(0, 5000)
+
+                    await page.wait_for_timeout(1000)
+
+            except:
+                pass
+
+            # DEBUG HTML
+
+            await debug_page(page)
+
+            # TESTS SELECTEURS
+
+            methods = []
+
+            m1 = await extract_method_1(page)
+            methods.extend(m1)
+
+            m2 = await extract_method_2(page)
+            methods.extend(m2)
+
+            m3 = await extract_method_3(page)
+            methods.extend(m3)
+
+            m4 = await extract_method_4(page)
+            methods.extend(m4)
+
+            print("")
+            print("🧩 ELEMENTS TROUVES =", len(methods))
+
+            if len(methods) == 0:
+
+                print("❌ AUCUN ELEMENT")
+
+                screenshot = f"screenshot_{page_num}.png"
+
+                await page.screenshot(
+                    path=screenshot,
+                    full_page=True
+                )
+
+                print("📸 SCREENSHOT =", screenshot)
+
                 break
 
-            count_before = len(rows)
+            before = len(rows)
 
-            for article in articles:
+            for el in methods:
 
                 try:
 
                     txt = clean(
-                        await article.inner_text()
+                        await el.inner_text()
                     )
 
-                    if len(txt) < 20:
-                        continue
+                    href = None
 
-                    link = await article.query_selector(
-                        "a.button"
-                    )
+                    # lien direct
 
-                    if not link:
-                        continue
+                    try:
 
-                    href = await link.get_attribute(
-                        "href"
-                    )
+                        href = await el.get_attribute(
+                            "href"
+                        )
+
+                    except:
+                        pass
+
+                    # lien enfant
 
                     if not href:
+
+                        try:
+
+                            link = await el.query_selector(
+                                "a"
+                            )
+
+                            if link:
+
+                                href = await link.get_attribute(
+                                    "href"
+                                )
+
+                        except:
+                            pass
+
+                    if not href:
+                        continue
+
+                    if "/bien/" not in href:
                         continue
 
                     if href.startswith("/"):
@@ -412,24 +588,34 @@ async def scrape():
                     print(
                         f"✅ {row['type']} | "
                         f"{row['prix']}€ | "
-                        f"{row['surface']}m²"
+                        f"{row['cp']}"
                     )
 
                 except Exception as e:
 
-                    print("❌ ARTICLE")
+                    print("❌ ELEMENT")
                     print(e)
 
-            if len(rows) == count_before:
+            added = len(rows) - before
+
+            print("")
+            print("➕ AJOUTES =", added)
+
+            if added == 0:
 
                 print("⛔ FIN PAGINATION")
-                break
 
-            page_num += 1
+                break
 
         await browser.close()
 
     df = pd.DataFrame(rows)
+
+    if len(df) > 0:
+
+        df = df.drop_duplicates(
+            subset="url"
+        )
 
     return df
 
@@ -446,24 +632,6 @@ def create_map(df):
         tiles="CartoDB positron"
     )
 
-    css = """
-<style>
-.leaflet-div-icon{
-    background:transparent !important;
-    border:none !important;
-    box-shadow:none !important;
-}
-.my-div-icon{
-    background:transparent !important;
-    border:none !important;
-}
-</style>
-"""
-
-    m.get_root().html.add_child(
-        folium.Element(css)
-    )
-
     for _, row in df.iterrows():
 
         try:
@@ -471,119 +639,35 @@ def create_map(df):
             if pd.isna(row["lat"]):
                 continue
 
-            prix = row["prix"]
-
-            if prix is None:
-
-                color = "#666666"
-
-            elif prix < 100000:
-
-                color = "#ff0000"
-
-            elif prix < 300000:
-
-                color = "#8000ff"
-
-            elif prix < 700000:
-
-                color = "#00aa00"
-
-            else:
-
-                color = "#222222"
-
-            symbol = "€"
-
-            if row["type"] == "Appartement":
-                symbol = "🏢"
-
-            elif row["type"] == "Maison":
-                symbol = "🏠"
-
-            elif row["type"] == "Villa":
-                symbol = "🏡"
-
-            elif row["type"] == "Terrain":
-                symbol = "🌳"
-
-            elif row["type"] == "Immeuble":
-                symbol = "🏬"
-
-            elif row["type"] == "Atelier":
-                symbol = "🏭"
-
             popup = f"""
 <b>{row['type']}</b><br><br>
 
-💰 Prix : {row['prix']} €<br>
+💰 {row['prix']} €<br>
 
-📐 Surface : {row['surface']} m²<br>
+📐 {row['surface']} m²<br>
 
-🚪 Pièces : {row['pieces']}<br>
+🚪 {row['pieces']} pièces<br>
 
-📍 CP : {row['cp']}<br><br>
+📍 {row['cp']}<br><br>
 
 <a href="{row['url']}" target="_blank">
 Voir annonce
 </a>
 """
 
-            html = f"""
-<div style="
-width:42px;
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
-background:transparent;
-">
-
-<div style="
-background:{color};
-width:38px;
-height:38px;
-border-radius:50%;
-display:flex;
-align-items:center;
-justify-content:center;
-color:white;
-font-weight:bold;
-font-size:14px;
-border:2px solid white;
-box-shadow:0 0 4px rgba(0,0,0,0.4);
-">
-{symbol}
-</div>
-
-</div>
-"""
-
-            marker = folium.Marker(
+            folium.Marker(
 
                 location=[
                     row["lat"],
                     row["lon"]
                 ],
 
-                popup=folium.Popup(
-                    popup,
-                    max_width=350
-                ),
+                popup=popup
 
-                icon=DivIcon(
-                    html=html,
-                    class_name="my-div-icon",
-                    icon_size=(42, 42),
-                    icon_anchor=(21, 21)
-                )
-            )
-
-            marker.add_to(m)
+            ).add_to(m)
 
         except Exception as e:
 
-            print("❌ MARKER")
             print(e)
 
     m.save(OUTPUT_MAP)
@@ -599,40 +683,47 @@ async def main():
 
     try:
 
-        print("🚀 SCRAPING")
+        print("")
+        print("=" * 80)
+        print("🚀 DEMARRAGE")
+        print("=" * 80)
 
         df = await scrape()
 
         print("")
+        print("=" * 80)
         print(f"📦 TOTAL = {len(df)}")
+        print("=" * 80)
 
         if len(df) == 0:
 
             print("❌ AUCUNE ANNONCE")
 
+            send_telegram(
+                "❌ IMMO NOTAIRES\nAUCUNE ANNONCE"
+            )
+
             return
 
+        print("")
+        print(df.head())
+
         df.to_csv(
-
-            HISTORY_FILE,
-
+            "immonotaires.csv",
             sep=";",
-
             index=False,
-
             encoding="utf-8-sig"
-
         )
 
-        print("💾 HISTORIQUE")
+        print("💾 CSV SAUVEGARDE")
 
         df = geolocate(df)
-
-        print("📍 GEO OK")
 
         create_map(df)
 
         send_file(OUTPUT_MAP)
+
+        send_file("immonotaires.csv")
 
         send_telegram(
             f"✅ IMMO NOTAIRES\n"
@@ -643,7 +734,11 @@ async def main():
 
     except Exception as e:
 
-        print("❌ MAIN")
+        print("")
+        print("=" * 80)
+        print("❌ ERREUR MAIN")
+        print("=" * 80)
+
         print(e)
 
         traceback.print_exc()
