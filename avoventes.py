@@ -726,7 +726,7 @@ async def main():
 
             msg += f"🔗 {row['url']}"
 
-            send_telegram(msg)
+            # send_telegram(msg)
 
         print("✅ FIN")
 
