@@ -36,7 +36,7 @@ def send_telegram(message):
     )
 
 
-def send_file(path):
+def file(path):
 
     token = os.getenv("TELEGRAM_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
@@ -309,7 +309,7 @@ def process(df):
 # =========================================================
 # DEBUG
 # =========================================================
-def send_debug(row):
+def debug(row):
 
     txt = row["txt"]
 
@@ -374,7 +374,7 @@ def send_debug(row):
     else:
         debug += "➡️ MATCH CP = AUCUN\n\n"
 
-    send_telegram(debug[:4000])
+   #  send_telegram(debug[:4000])
 
 
 # =========================================================
@@ -661,7 +661,7 @@ async def main():
 
             msg += f"🔗 {row['url']}"
 
-            send_telegram(msg)
+            # send_telegram(msg)
 
     else:
 
