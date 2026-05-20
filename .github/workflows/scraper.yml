@@ -167,7 +167,8 @@ jobs:
           git add historique_immo.csv || true
           git add historique_immonotaires.csv || true
           git add historique_avoventes.csv || true
-
+          git add historique_vench.csv || true
+          
           git commit -m "update historiques" || echo "no changes"
 
           git pull --rebase || true
