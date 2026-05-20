@@ -514,7 +514,7 @@ async def main():
         return
 
     # DEBUG
-    send_debug(df.iloc[0])
+    # send_debug(df.iloc[0])
 
     # =====================================================
     # FILTRES
