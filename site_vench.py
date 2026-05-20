@@ -1,33 +1,44 @@
+
 # =========================================================
-# VENCH SCRAPER
-# VERSION ULTRA DEBUG FORENSIC
+# VENCH SCRAPER FULL VERSION
 # =========================================================
 #
-# OBJECTIF :
+# FEATURES
+# --------
 #
-# - comprendre EXACTEMENT ce que renvoie Vench
-# - détecter blocages cloudflare
-# - détecter lazy loading
-# - détecter contenu JS
-# - détecter redirections
-# - détecter pages vides
-# - détecter erreurs playwright
-# - détecter anti-bot
-# - récupérer TOUS les liens annonces
-# - dumper HTML/TXT/screenshots
-# - logger chaque étape
+# ✅ pagination
+# ✅ scraping detail pages
+# ✅ historique CSV
+# ✅ telegram alert
+# ✅ carte folium
+# ✅ couleurs popup
+# ✅ debug ultra verbeux
+# ✅ screenshots
+# ✅ html dumps
+# ✅ txt dumps
+# ✅ retry
+# ✅ geolocalisation CP
+# ✅ anti doublons
+# ✅ extraction robuste
+# ✅ surface
+# ✅ tribunal
+# ✅ date audience
+# ✅ mise à prix
 #
 # =========================================================
 
 import asyncio
-import pandas as pd
-import re
 import os
+import re
 import traceback
 import json
 import time
 
-from datetime import datetime
+import pandas as pd
+import requests
+import folium
+
+from bs4 import BeautifulSoup
 
 from playwright.async_api import async_playwright
 
@@ -37,16 +48,52 @@ from playwright.async_api import async_playwright
 
 BASE_URL = "https://www.vench.fr/prochaines-ventes-aux-encheres.html"
 
+MAX_PAGES = 5
+
+HEADLESS = True
+
 DEBUG_DIR = "debug_vench"
 
-HEADLESS = False
+OUTPUT_CSV = "vench.csv"
 
-MAX_PAGES = 3
+HISTO_CSV = "historique_vench.csv"
 
-os.makedirs(DEBUG_DIR, exist_ok=True)
+MAP_FILE = "carte_vench.html"
+
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+os.makedirs(
+    DEBUG_DIR,
+    exist_ok=True
+)
 
 # =========================================================
-# UTILS
+# LOAD GEO
+# =========================================================
+
+geo = pd.read_csv(
+    "base-officielle-codes-postaux.csv",
+    dtype=str
+)
+
+geo = geo[[
+    "code_postal",
+    "latitude",
+    "longitude"
+]]
+
+geo.columns = [
+    "cp",
+    "lat",
+    "lon"
+]
+
+geo["cp"] = geo["cp"].astype(str)
+
+# =========================================================
+# CLEAN
 # =========================================================
 
 def clean(txt):
@@ -65,6 +112,9 @@ def clean(txt):
 
     return txt.strip()
 
+# =========================================================
+# DEBUG
+# =========================================================
 
 def log(title, value=""):
 
@@ -77,8 +127,11 @@ def log(title, value=""):
 
     print("=" * 80)
 
+# =========================================================
+# SAVE
+# =========================================================
 
-def save_txt(path, content):
+def save_txt(path, txt):
 
     with open(
         path,
@@ -86,120 +139,452 @@ def save_txt(path, content):
         encoding="utf-8"
     ) as f:
 
-        f.write(content)
-
+        f.write(txt)
 
 # =========================================================
 # EXTRACTIONS
 # =========================================================
 
+def extract_price(txt):
+
+    txt = clean(txt)
+
+    patterns = [
+
+        r"MISE\s*À\s*PRIX\s*[:\-]?\s*([\d\s\.,]+)\s*€",
+
+        r"mise\s*à\s*prix\s*[:\-]?\s*([\d\s\.,]+)\s*€",
+
+        r"([\d\s]+(?:[\.,]\d+)?)\s*€"
+
+    ]
+
+    found = []
+
+    for p in patterns:
+
+        matches = re.findall(
+            p,
+            txt,
+            re.I
+        )
+
+        for m in matches:
+
+            try:
+
+                v = str(m)
+
+                v = v.replace(" ", "")
+                v = v.replace(".00", "")
+                v = v.replace(",00", "")
+
+                v = re.sub(r"[^\d]", "", v)
+
+                if not v:
+                    continue
+
+                v = int(v)
+
+                if 500 <= v <= 100000000:
+
+                    found.append(v)
+
+            except:
+                pass
+
+    if len(found) == 0:
+        return None
+
+    return min(found)
+
+
 def extract_cp(txt):
 
-    try:
+    m = re.search(
+        r"\b(\d{5})\b",
+        txt
+    )
 
-        m = re.findall(r"\b(\d{5})\b", txt)
-
-        if len(m) > 0:
-            return m[0]
-
-    except:
-        pass
+    if m:
+        return m.group(1)
 
     return None
 
 
-def extract_price(txt):
+def extract_surface(txt):
 
-    try:
+    m = re.search(
+        r"(\d+(?:[\.,]\d+)?)\s?m²",
+        txt,
+        re.I
+    )
 
-        matches = re.findall(
-            r"(\d[\d\s]{2,})\s?€",
-            txt
+    if m:
+        return m.group(1)
+
+    return None
+
+
+def extract_date(txt):
+
+    m = re.search(
+        r"(\d{2}/\d{2}/\d{4})",
+        txt
+    )
+
+    if m:
+        return m.group(1)
+
+    return None
+
+
+def extract_tribunal(txt):
+
+    m = re.search(
+        r"TRIBUNAL[^A-Z]*([A-Z\-\s]+)",
+        txt
+    )
+
+    if m:
+
+        return clean(
+            m.group(1)
         )
-
-        vals = []
-
-        for m in matches:
-
-            m = re.sub(r"\s+", "", m)
-
-            if m.isdigit():
-
-                v = int(m)
-
-                if 1000 <= v <= 100000000:
-                    vals.append(v)
-
-        if len(vals) == 0:
-            return None
-
-        return min(vals)
-
-    except:
-        pass
 
     return None
 
 
 def detect_type(txt):
 
-    t = txt.lower()
+    txt = txt.lower()
 
-    if "appartement" in t:
-        return "Appartement"
+    mapping = {
 
-    if "maison" in t:
-        return "Maison"
+        "maison": "Maison",
 
-    if "villa" in t:
-        return "Villa"
+        "appartement": "Appartement",
 
-    if "terrain" in t:
-        return "Terrain"
+        "terrain": "Terrain",
 
-    if "immeuble" in t:
-        return "Immeuble"
+        "parcelle": "Terrain",
+
+        "immeuble": "Immeuble",
+
+        "garage": "Garage",
+
+        "local": "Local"
+
+    }
+
+    for k, v in mapping.items():
+
+        if k in txt:
+
+            return v
 
     return "Autre"
 
+# =========================================================
+# TELEGRAM
+# =========================================================
+
+def telegram(msg):
+
+    try:
+
+        if not TELEGRAM_TOKEN:
+            return
+
+        if not TELEGRAM_CHAT_ID:
+            return
+
+        url = (
+            f"https://api.telegram.org/bot"
+            f"{TELEGRAM_TOKEN}/sendMessage"
+        )
+
+        requests.post(
+
+            url,
+
+            data={
+
+                "chat_id": TELEGRAM_CHAT_ID,
+
+                "text": msg,
+
+                "parse_mode": "HTML"
+
+            },
+
+            timeout=30
+        )
+
+        print("📨 TELEGRAM OK")
+
+    except Exception as e:
+
+        print("❌ TELEGRAM ERROR")
+        print(e)
 
 # =========================================================
-# MAIN SCRAPE
+# COLOR
+# =========================================================
+
+def color_price(price):
+
+    if price is None:
+        return "gray"
+
+    if price < 10000:
+        return "green"
+
+    if price < 50000:
+        return "orange"
+
+    return "red"
+
+# =========================================================
+# PARSE DETAIL
+# =========================================================
+
+def parse_detail(html, url):
+
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
+
+    title = ""
+
+    if soup.title:
+        title = clean(
+            soup.title.get_text()
+        )
+
+    h1 = ""
+
+    h1_tag = soup.find("h1")
+
+    if h1_tag:
+        h1 = clean(
+            h1_tag.get_text()
+        )
+
+    body = clean(
+        soup.get_text(" ")
+    )
+
+    full = "\n".join([
+        title,
+        h1,
+        body
+    ])
+
+    cp = extract_cp(full)
+
+    price = extract_price(full)
+
+    surface = extract_surface(full)
+
+    date_vente = extract_date(full)
+
+    tribunal = extract_tribunal(full)
+
+    property_type = detect_type(full)
+
+    row = {
+
+        "url": url,
+
+        "titre": h1,
+
+        "cp": cp,
+
+        "prix": price,
+
+        "surface": surface,
+
+        "date_vente": date_vente,
+
+        "tribunal": tribunal,
+
+        "type": property_type,
+
+        "txt": full
+    }
+
+    log(
+        "✅ EXTRACTION",
+        json.dumps(
+            row,
+            indent=2,
+            ensure_ascii=False
+        )
+    )
+
+    return row
+
+# =========================================================
+# GEO
+# =========================================================
+
+def geocode_cp(df):
+
+    df["cp"] = df["cp"].astype(str)
+
+    out = df.merge(
+        geo,
+        on="cp",
+        how="left"
+    )
+
+    return out
+
+# =========================================================
+# MAP
+# =========================================================
+
+def build_map(df):
+
+    if len(df) == 0:
+        return
+
+    valid = df.dropna(
+        subset=["lat", "lon"]
+    )
+
+    if len(valid) == 0:
+        return
+
+    m = folium.Map(
+
+        location=[
+            valid["lat"].astype(float).mean(),
+            valid["lon"].astype(float).mean()
+        ],
+
+        zoom_start=6
+    )
+
+    for _, row in valid.iterrows():
+
+        try:
+
+            color = color_price(
+                row["prix"]
+            )
+
+            popup = f"""
+            <b>{row['type']}</b><br><br>
+
+            💰 Prix :
+            {row['prix']} €<br>
+
+            📮 CP :
+            {row['cp']}<br>
+
+            🏛 Tribunal :
+            {row['tribunal']}<br>
+
+            📅 Audience :
+            {row['date_vente']}<br>
+
+            📐 Surface :
+            {row['surface']}<br><br>
+
+            <a href="{row['url']}" target="_blank">
+            Ouvrir annonce
+            </a>
+            """
+
+            folium.CircleMarker(
+
+                location=[
+                    float(row["lat"]),
+                    float(row["lon"])
+                ],
+
+                radius=8,
+
+                color=color,
+
+                fill=True,
+
+                fill_opacity=0.8,
+
+                popup=folium.Popup(
+                    popup,
+                    max_width=350
+                )
+
+            ).add_to(m)
+
+        except:
+            pass
+
+    m.save(MAP_FILE)
+
+    log(
+        "🗺 MAP SAVED",
+        MAP_FILE
+    )
+
+# =========================================================
+# HISTORIQUE
+# =========================================================
+
+def load_histo():
+
+    if not os.path.exists(
+        HISTO_CSV
+    ):
+
+        return set()
+
+    try:
+
+        histo = pd.read_csv(
+            HISTO_CSV,
+            sep=";"
+        )
+
+        return set(
+            histo["id_unique"]
+        )
+
+    except:
+        return set()
+
+# =========================================================
+# MAIN SCRAPER
 # =========================================================
 
 async def scrape():
 
     rows = []
 
-    seen = set()
+    known = load_histo()
+
+    log(
+        "📚 HISTORIQUE",
+        len(known)
+    )
 
     async with async_playwright() as p:
-
-        # =====================================================
-        # BROWSER
-        # =====================================================
-
-        log("🚀 LAUNCH BROWSER")
 
         browser = await p.chromium.launch(
 
             headless=HEADLESS,
 
-            slow_mo=200,
-
             args=[
-
-                "--disable-blink-features=AutomationControlled",
-
-                "--disable-dev-shm-usage",
 
                 "--no-sandbox",
 
-                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
 
-                "--disable-infobars",
-
-                "--window-size=1920,1080"
+                "--disable-blink-features=AutomationControlled"
 
             ]
         )
@@ -212,227 +597,51 @@ async def scrape():
             },
 
             user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            ),
-
-            locale="fr-FR",
-
-            timezone_id="Europe/Paris"
+                "Mozilla/5.0 "
+                "(Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 "
+                "(KHTML, like Gecko) "
+                "Chrome/122.0 Safari/537.36"
+            )
         )
 
         page = await context.new_page()
 
-        detail = await context.new_page()
-
-        # =====================================================
-        # NETWORK DEBUG
-        # =====================================================
-
-        requests_log = []
-
-        responses_log = []
-
-        failures_log = []
-
-        async def on_request(request):
+        for page_num in range(
+            1,
+            MAX_PAGES + 1
+        ):
 
             try:
 
-                req = {
-                    "method": request.method,
-                    "url": request.url,
-                    "resource": request.resource_type
-                }
+                if page_num == 1:
 
-                requests_log.append(req)
+                    url = BASE_URL
 
-                print(
-                    f"➡️ REQUEST "
-                    f"{request.resource_type} "
-                    f"{request.method} "
-                    f"{request.url[:120]}"
+                else:
+
+                    url = (
+                        BASE_URL
+                        + f"?p={page_num}"
+                    )
+
+                log(
+                    f"📄 PAGE {page_num}",
+                    url
                 )
 
-            except:
-                pass
-
-        async def on_response(response):
-
-            try:
-
-                res = {
-                    "status": response.status,
-                    "url": response.url
-                }
-
-                responses_log.append(res)
-
-                print(
-                    f"⬅️ RESPONSE "
-                    f"{response.status} "
-                    f"{response.url[:120]}"
-                )
-
-            except:
-                pass
-
-        async def on_failed(request):
-
-            try:
-
-                fail = {
-                    "url": request.url,
-                    "failure": request.failure
-                }
-
-                failures_log.append(fail)
-
-                print(
-                    f"❌ FAILED "
-                    f"{request.url[:120]}"
-                )
-
-            except:
-                pass
-
-        page.on("request", on_request)
-        page.on("response", on_response)
-        page.on("requestfailed", on_failed)
-
-        # =====================================================
-        # PAGES
-        # =====================================================
-
-        for page_num in range(1, MAX_PAGES + 1):
-
-            log(f"📄 PAGE {page_num}")
-
-            if page_num == 1:
-
-                url = BASE_URL
-
-            else:
-
-                url = f"{BASE_URL}?p={page_num}"
-
-            log("🌐 OPEN URL", url)
-
-            t0 = time.time()
-
-            try:
-
-                response = await page.goto(
+                await page.goto(
 
                     url,
 
                     wait_until="domcontentloaded",
 
-                    timeout=180000
+                    timeout=120000
                 )
 
-                delta = round(time.time() - t0, 2)
-
-                log("⏱️ LOAD TIME", f"{delta}s")
-
-                if response:
-
-                    log(
-                        "📡 RESPONSE STATUS",
-                        response.status
-                    )
-
-                else:
-
-                    log("⚠️ NO RESPONSE OBJECT")
-
-            except Exception as e:
-
-                log("❌ GOTO ERROR", str(e))
-
-                traceback.print_exc()
-
-                continue
-
-            # =================================================
-            # ATTENTE LONGUE
-            # =================================================
-
-            log("⏳ WAIT EXTRA")
-
-            await page.wait_for_timeout(15000)
-
-            # =================================================
-            # PAGE INFO
-            # =================================================
-
-            try:
-
-                current_url = page.url
-
-                title = await page.title()
-
-                log("📍 FINAL URL", current_url)
-
-                log("📄 TITLE", title)
-
-            except Exception as e:
-
-                log("❌ TITLE ERROR", str(e))
-
-            # =================================================
-            # HTML
-            # =================================================
-
-            try:
-
-                html = await page.content()
-
-                html_size = len(html)
-
-                log("📦 HTML SIZE", html_size)
-
-                save_txt(
-                    f"{DEBUG_DIR}/page_{page_num}.html",
-                    html
+                await page.wait_for_timeout(
+                    5000
                 )
-
-            except Exception as e:
-
-                log("❌ HTML ERROR", str(e))
-
-            # =================================================
-            # TXT
-            # =================================================
-
-            try:
-
-                txt = await page.locator("body").inner_text()
-
-                txt = clean(txt)
-
-                txt_size = len(txt)
-
-                log("📄 TXT SIZE", txt_size)
-
-                print("")
-                print(txt[:3000])
-
-                save_txt(
-                    f"{DEBUG_DIR}/page_{page_num}.txt",
-                    txt
-                )
-
-            except Exception as e:
-
-                log("❌ TXT ERROR", str(e))
-
-            # =================================================
-            # SCREENSHOT
-            # =================================================
-
-            try:
 
                 await page.screenshot(
 
@@ -444,356 +653,173 @@ async def scrape():
                     full_page=True
                 )
 
-                log("📸 SCREENSHOT OK")
-
-            except Exception as e:
-
-                log("❌ SCREENSHOT ERROR", str(e))
-
-            # =================================================
-            # DETECT CLOUDLFARE
-            # =================================================
-
-            try:
-
-                checks = [
-
-                    "cloudflare",
-                    "checking your browser",
-                    "captcha",
-                    "verify you are human",
-                    "ddos protection"
-
-                ]
-
-                low = txt.lower()
-
-                for c in checks:
-
-                    if c in low:
-
-                        log(
-                            "🚨 ANTI BOT DETECTE",
-                            c
-                        )
-
-            except:
-                pass
-
-            # =================================================
-            # LINKS
-            # =================================================
-
-            try:
-
-                links = await page.locator("a").evaluate_all(
-                    """
-                    els => els.map(
-                        e => ({
-                            href:e.href,
-                            txt:e.innerText
-                        })
-                    )
-                    """
-                )
-
-                log(
-                    "🔗 NB LINKS",
-                    len(links)
-                )
+                html = await page.content()
 
                 save_txt(
 
-                    f"{DEBUG_DIR}/links_{page_num}.json",
+                    f"{DEBUG_DIR}/"
+                    f"page_{page_num}.html",
 
-                    json.dumps(
-                        links,
-                        indent=2,
-                        ensure_ascii=False
-                    )
+                    html
                 )
 
-            except Exception as e:
+                links = await page.eval_on_selector_all(
 
-                log("❌ LINKS ERROR", str(e))
+                    "a",
 
-                links = []
+                    """
+                    els => els
+                        .map(e => e.href)
+                        .filter(h =>
+                            h.includes('/vente-')
+                        )
+                    """
+                )
 
-            # =================================================
-            # FILTRE ANNONCES
-            # =================================================
+                links = list(set(links))
 
-            annonce_urls = []
+                log(
+                    "🏠 NB ANNONCES",
+                    len(links)
+                )
 
-            for l in links:
+                # =========================================
+                # DETAILS
+                # =========================================
 
-                href = l.get("href")
-
-                if href is None:
-                    continue
-
-                href = str(href)
-
-                if "/vente-" in href:
-
-                    if href not in annonce_urls:
-
-                        annonce_urls.append(href)
-
-            log(
-                "🏠 NB ANNONCES",
-                len(annonce_urls)
-            )
-
-            for a in annonce_urls:
-
-                print(a)
-
-            # =================================================
-            # DETAILS
-            # =================================================
-
-            for idx, annonce_url in enumerate(annonce_urls):
-
-                try:
-
-                    if annonce_url in seen:
-                        continue
-
-                    seen.add(annonce_url)
-
-                    log(
-                        f"🏠 DETAIL {idx+1}/{len(annonce_urls)}",
-                        annonce_url
-                    )
-
-                    t1 = time.time()
-
-                    response = await detail.goto(
-
-                        annonce_url,
-
-                        wait_until="domcontentloaded",
-
-                        timeout=180000
-                    )
-
-                    dt = round(time.time() - t1, 2)
-
-                    log(
-                        "⏱️ DETAIL LOAD",
-                        f"{dt}s"
-                    )
-
-                    await detail.wait_for_timeout(10000)
-
-                    # =========================================
-                    # TITLE
-                    # =========================================
+                for i, detail_url in enumerate(links):
 
                     try:
 
-                        title = await detail.title()
-
                         log(
-                            "📄 DETAIL TITLE",
-                            title
+                            f"🏠 DETAIL "
+                            f"{i+1}/{len(links)}",
+                            detail_url
                         )
 
-                    except Exception as e:
+                        detail = await context.new_page()
 
-                        log(
-                            "❌ DETAIL TITLE ERROR",
-                            str(e)
+                        await detail.goto(
+
+                            detail_url,
+
+                            wait_until=(
+                                "domcontentloaded"
+                            ),
+
+                            timeout=120000
                         )
 
-                    # =========================================
-                    # HTML
-                    # =========================================
-
-                    try:
+                        await detail.wait_for_timeout(
+                            3000
+                        )
 
                         detail_html = await detail.content()
 
                         save_txt(
 
                             f"{DEBUG_DIR}/"
-                            f"detail_{idx}.html",
+                            f"detail_{page_num}_{i}.html",
 
                             detail_html
                         )
-
-                        log(
-                            "📦 DETAIL HTML SIZE",
-                            len(detail_html)
-                        )
-
-                    except Exception as e:
-
-                        log(
-                            "❌ DETAIL HTML ERROR",
-                            str(e)
-                        )
-
-                    # =========================================
-                    # TXT
-                    # =========================================
-
-                    try:
-
-                        detail_txt = await detail.locator(
-                            "body"
-                        ).inner_text()
-
-                        detail_txt = clean(detail_txt)
-
-                        save_txt(
-
-                            f"{DEBUG_DIR}/"
-                            f"detail_{idx}.txt",
-
-                            detail_txt
-                        )
-
-                        log(
-                            "📄 DETAIL TXT SIZE",
-                            len(detail_txt)
-                        )
-
-                        print("")
-                        print(detail_txt[:5000])
-
-                    except Exception as e:
-
-                        log(
-                            "❌ DETAIL TXT ERROR",
-                            str(e)
-                        )
-
-                        detail_txt = ""
-
-                    # =========================================
-                    # SCREENSHOT
-                    # =========================================
-
-                    try:
 
                         await detail.screenshot(
 
                             path=(
                                 f"{DEBUG_DIR}/"
-                                f"detail_{idx}.png"
+                                f"detail_{page_num}_{i}.png"
                             ),
 
                             full_page=True
                         )
 
-                        log("📸 DETAIL SCREENSHOT OK")
+                        row = parse_detail(
+                            detail_html,
+                            detail_url
+                        )
+
+                        # =================================
+                        # UNIQUE ID
+                        # =================================
+
+                        row["id_unique"] = (
+                            f"{row['url']}"
+                        )
+
+                        # =================================
+                        # NEW ?
+                        # =================================
+
+                        if row["id_unique"] not in known:
+
+                            log(
+                                "🆕 NOUVELLE ANNONCE"
+                            )
+
+                            msg = f"""
+🏠 <b>{row['type']}</b>
+
+💰 {row['prix']} €
+
+📮 {row['cp']}
+
+📅 {row['date_vente']}
+
+🏛 {row['tribunal']}
+
+🔗 {row['url']}
+"""
+
+                            telegram(msg)
+
+                        rows.append(row)
+
+                        await detail.close()
 
                     except Exception as e:
 
                         log(
-                            "❌ DETAIL SCREENSHOT ERROR",
+                            "❌ DETAIL ERROR",
                             str(e)
                         )
 
-                    # =========================================
-                    # EXTRACTIONS
-                    # =========================================
+                        traceback.print_exc()
 
-                    row = {
+                # =========================================
+                # SAVE LIVE
+                # =========================================
 
-                        "url": annonce_url,
+                live = pd.DataFrame(rows)
 
-                        "cp": extract_cp(detail_txt),
+                live.to_csv(
 
-                        "prix": extract_price(detail_txt),
+                    OUTPUT_CSV,
 
-                        "type": detect_type(detail_txt),
+                    sep=";",
 
-                        "titre": clean(
-                            detail_txt[:300]
-                        ),
+                    index=False,
 
-                        "txt_len": len(detail_txt)
-                    }
+                    encoding="utf-8-sig"
+                )
 
-                    log(
-                        "✅ EXTRACTION",
-                        json.dumps(
-                            row,
-                            indent=2,
-                            ensure_ascii=False
-                        )
-                    )
+                log(
+                    "💾 LIVE CSV SAVED",
+                    len(live)
+                )
 
-                    rows.append(row)
+            except Exception as e:
 
-                except Exception as e:
+                log(
+                    "❌ PAGE ERROR",
+                    str(e)
+                )
 
-                    log(
-                        "❌ DETAIL ERROR",
-                        str(e)
-                    )
-
-                    traceback.print_exc()
-
-        # =====================================================
-        # SAVE NETWORK
-        # =====================================================
-
-        save_txt(
-
-            f"{DEBUG_DIR}/requests.json",
-
-            json.dumps(
-                requests_log,
-                indent=2,
-                ensure_ascii=False
-            )
-        )
-
-        save_txt(
-
-            f"{DEBUG_DIR}/responses.json",
-
-            json.dumps(
-                responses_log,
-                indent=2,
-                ensure_ascii=False
-            )
-        )
-
-        save_txt(
-
-            f"{DEBUG_DIR}/failures.json",
-
-            json.dumps(
-                failures_log,
-                indent=2,
-                ensure_ascii=False
-            )
-        )
-
-        log(
-            "📡 REQUESTS TOTAL",
-            len(requests_log)
-        )
-
-        log(
-            "📡 RESPONSES TOTAL",
-            len(responses_log)
-        )
-
-        log(
-            "❌ FAILURES TOTAL",
-            len(failures_log)
-        )
+                traceback.print_exc()
 
         await browser.close()
 
     return pd.DataFrame(rows)
-
 
 # =========================================================
 # MAIN
@@ -805,16 +831,21 @@ async def main():
 
     df = await scrape()
 
-    log(
-        "📊 DF SHAPE",
-        df.shape
-    )
+    # =====================================================
+    # GEO
+    # =====================================================
 
-    print(df.head())
+    log("🌍 GEO")
+
+    df = geocode_cp(df)
+
+    # =====================================================
+    # SAVE FINAL
+    # =====================================================
 
     df.to_csv(
 
-        "vench_debug.csv",
+        OUTPUT_CSV,
 
         sep=";",
 
@@ -823,7 +854,46 @@ async def main():
         encoding="utf-8-sig"
     )
 
-    log("💾 CSV SAVED")
+    # =====================================================
+    # HISTORIQUE
+    # =====================================================
+
+    histo = df.copy()
+
+    histo.to_csv(
+
+        HISTO_CSV,
+
+        sep=";",
+
+        index=False,
+
+        encoding="utf-8-sig"
+    )
+
+    log(
+        "📚 HISTO SAVED",
+        len(histo)
+    )
+
+    # =====================================================
+    # MAP
+    # =====================================================
+
+    build_map(df)
+
+    # =====================================================
+    # STATS
+    # =====================================================
+
+    log(
+        "📊 FINAL DF",
+        df.shape
+    )
+
+    print(df.head())
+
+    log("🏁 FIN")
 
 
 asyncio.run(main())
