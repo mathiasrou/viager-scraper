@@ -376,4 +376,3 @@ async def main():
     print("💾 CSV SAUVE")
 
 asyncio.run(main())
-```
