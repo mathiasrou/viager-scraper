@@ -1,96 +1,89 @@
-
-# =========================================================
-# VENCH SCRAPER FULL VERSION
-# =========================================================
-#
-# FEATURES
-# --------
-#
-# ✅ pagination
-# ✅ scraping detail pages
-# ✅ historique CSV
-# ✅ telegram alert
-# ✅ carte folium
-# ✅ couleurs popup
-# ✅ debug ultra verbeux
-# ✅ screenshots
-# ✅ html dumps
-# ✅ txt dumps
-# ✅ retry
-# ✅ geolocalisation CP
-# ✅ anti doublons
-# ✅ extraction robuste
-# ✅ surface
-# ✅ tribunal
-# ✅ date audience
-# ✅ mise à prix
-#
-# =========================================================
-
 import asyncio
-import os
-import re
-import traceback
-import json
-import time
-
 import pandas as pd
-import requests
+import re
 import folium
-
-from bs4 import BeautifulSoup
+import traceback
+import os
+import requests
 
 from playwright.async_api import async_playwright
+from folium.features import DivIcon
+
 
 # =========================================================
 # CONFIG
 # =========================================================
 
-BASE_URL = "https://www.vench.fr/prochaines-ventes-aux-encheres.html"
-
-MAX_PAGES = 5
-
-HEADLESS = True
-
-DEBUG_DIR = "debug_vench"
-
-OUTPUT_CSV = "vench.csv"
-
-HISTO_CSV = "historique_vench.csv"
-
-MAP_FILE = "carte_vench.html"
-
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-
-os.makedirs(
-    DEBUG_DIR,
-    exist_ok=True
+BASE_URL = (
+    "https://www.vench.fr/"
+    "prochaines-ventes-aux-encheres.html"
 )
 
+CSV_CP = "base-officielle-codes-postaux.csv"
+
+HISTORY_FILE = "historique_vench.csv"
+
+OUTPUT_MAP = "carte_vench.html"
+
+
 # =========================================================
-# LOAD GEO
+# TELEGRAM
 # =========================================================
 
-geo = pd.read_csv(
-    "base-officielle-codes-postaux.csv",
-    dtype=str
-)
+def send_telegram(message):
 
-geo = geo[[
-    "code_postal",
-    "latitude",
-    "longitude"
-]]
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-geo.columns = [
-    "cp",
-    "lat",
-    "lon"
-]
+    if not token or not chat_id:
+        print("❌ TELEGRAM NON CONFIGURE")
+        return
 
-geo["cp"] = geo["cp"].astype(str)
+    try:
+
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+        requests.post(
+            url,
+            data={
+                "chat_id": chat_id,
+                "text": message
+            },
+            timeout=30
+        )
+
+    except Exception as e:
+
+        print("❌ TELEGRAM")
+        print(e)
+
+
+def send_file(path):
+
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        return
+
+    try:
+
+        url = f"https://api.telegram.org/bot{token}/sendDocument"
+
+        with open(path, "rb") as f:
+
+            requests.post(
+                url,
+                data={"chat_id": chat_id},
+                files={"document": f},
+                timeout=60
+            )
+
+    except Exception as e:
+
+        print("❌ TELEGRAM FILE")
+        print(e)
+
 
 # =========================================================
 # CLEAN
@@ -112,34 +105,35 @@ def clean(txt):
 
     return txt.strip()
 
-# =========================================================
-# DEBUG
-# =========================================================
-
-def log(title, value=""):
-
-    print("")
-    print("=" * 80)
-    print(title)
-
-    if value != "":
-        print(value)
-
-    print("=" * 80)
 
 # =========================================================
-# SAVE
+# TYPE
 # =========================================================
 
-def save_txt(path, txt):
+def detect_type(txt):
 
-    with open(
-        path,
-        "w",
-        encoding="utf-8"
-    ) as f:
+    t = txt.lower()
 
-        f.write(txt)
+    if "appartement" in t:
+        return "Appartement"
+
+    if "maison" in t:
+        return "Maison"
+
+    if "villa" in t:
+        return "Villa"
+
+    if "terrain" in t:
+        return "Terrain"
+
+    if "immeuble" in t:
+        return "Immeuble"
+
+    if "local commercial" in t:
+        return "Local commercial"
+
+    return "Autre"
+
 
 # =========================================================
 # EXTRACTIONS
@@ -147,470 +141,165 @@ def save_txt(path, txt):
 
 def extract_price(txt):
 
-    txt = clean(txt)
-
-    patterns = [
-
-        r"MISE\s*À\s*PRIX\s*[:\-]?\s*([\d\s\.,]+)\s*€",
-
-        r"mise\s*à\s*prix\s*[:\-]?\s*([\d\s\.,]+)\s*€",
-
-        r"([\d\s]+(?:[\.,]\d+)?)\s*€"
-
-    ]
-
-    found = []
-
-    for p in patterns:
+    try:
 
         matches = re.findall(
-            p,
-            txt,
-            re.I
+            r"(\d[\d\s]+(?:[\.,]\d+)?)\s*€",
+            txt
         )
 
-        for m in matches:
+        vals = []
+
+        for ptxt in matches:
 
             try:
 
-                v = str(m)
+                v = (
+                    ptxt
+                    .replace(" ", "")
+                    .replace(",", ".")
+                )
 
-                v = v.replace(" ", "")
-                v = v.replace(".00", "")
-                v = v.replace(",00", "")
-
-                v = re.sub(r"[^\d]", "", v)
-
-                if not v:
-                    continue
+                v = v.split(".")[0]
 
                 v = int(v)
 
-                if 500 <= v <= 100000000:
-
-                    found.append(v)
+                if 1000 <= v <= 100000000:
+                    vals.append(v)
 
             except:
                 pass
 
-    if len(found) == 0:
-        return None
+        if len(vals) == 0:
+            return None
 
-    return min(found)
+        return min(vals)
+
+    except:
+        return None
 
 
 def extract_cp(txt):
 
-    m = re.search(
-        r"\b(\d{5})\b",
-        txt
-    )
+    try:
 
-    if m:
-        return m.group(1)
+        m = re.findall(r"\b(\d{5})\b", txt)
 
-    return None
+        if len(m) > 0:
+            return m[0]
 
-
-def extract_surface(txt):
-
-    m = re.search(
-        r"(\d+(?:[\.,]\d+)?)\s?m²",
-        txt,
-        re.I
-    )
-
-    if m:
-        return m.group(1)
+    except:
+        pass
 
     return None
 
 
 def extract_date(txt):
 
-    m = re.search(
-        r"(\d{2}/\d{2}/\d{4})",
-        txt
-    )
+    try:
 
-    if m:
-        return m.group(1)
+        m = re.search(
+            r"(\d{2}/\d{2}/\d{4})",
+            txt
+        )
+
+        if m:
+            return m.group(1)
+
+    except:
+        pass
+
+    return None
+
+
+def extract_surface(txt):
+
+    try:
+
+        m = re.search(
+            r"(\d+(?:[\.,]\d+)?)\s?m²",
+            txt,
+            re.I
+        )
+
+        if m:
+            return m.group(1)
+
+    except:
+        pass
 
     return None
 
 
 def extract_tribunal(txt):
 
-    m = re.search(
-        r"TRIBUNAL[^A-Z]*([A-Z\-\s]+)",
-        txt
-    )
+    try:
 
-    if m:
-
-        return clean(
-            m.group(1)
+        m = re.search(
+            r"Tribunal(?: judiciaire)? de ([^\n]+)",
+            txt,
+            re.I
         )
+
+        if m:
+            return clean(m.group(1))
+
+    except:
+        pass
 
     return None
 
 
-def detect_type(txt):
+def extract_status(txt):
 
-    txt = txt.lower()
+    t = txt.lower()
 
-    mapping = {
+    if "adjugé" in t:
+        return "terminee"
 
-        "maison": "Maison",
+    if "retirée" in t:
+        return "retiree"
 
-        "appartement": "Appartement",
+    if "reportée" in t:
+        return "reportee"
 
-        "terrain": "Terrain",
+    return "future"
 
-        "parcelle": "Terrain",
-
-        "immeuble": "Immeuble",
-
-        "garage": "Garage",
-
-        "local": "Local"
-
-    }
-
-    for k, v in mapping.items():
-
-        if k in txt:
-
-            return v
-
-    return "Autre"
 
 # =========================================================
-# TELEGRAM
-# =========================================================
-
-def telegram(msg):
-
-    try:
-
-        if not TELEGRAM_TOKEN:
-            return
-
-        if not TELEGRAM_CHAT_ID:
-            return
-
-        url = (
-            f"https://api.telegram.org/bot"
-            f"{TELEGRAM_TOKEN}/sendMessage"
-        )
-
-        requests.post(
-
-            url,
-
-            data={
-
-                "chat_id": TELEGRAM_CHAT_ID,
-
-                "text": msg,
-
-                "parse_mode": "HTML"
-
-            },
-
-            timeout=30
-        )
-
-        print("📨 TELEGRAM OK")
-
-    except Exception as e:
-
-        print("❌ TELEGRAM ERROR")
-        print(e)
-
-# =========================================================
-# COLOR
-# =========================================================
-
-def color_price(price):
-
-    if price is None:
-        return "gray"
-
-    if price < 10000:
-        return "green"
-
-    if price < 50000:
-        return "orange"
-
-    return "red"
-
-# =========================================================
-# PARSE DETAIL
-# =========================================================
-
-def parse_detail(html, url):
-
-    soup = BeautifulSoup(
-        html,
-        "html.parser"
-    )
-
-    title = ""
-
-    if soup.title:
-        title = clean(
-            soup.title.get_text()
-        )
-
-    h1 = ""
-
-    h1_tag = soup.find("h1")
-
-    if h1_tag:
-        h1 = clean(
-            h1_tag.get_text()
-        )
-
-    body = clean(
-        soup.get_text(" ")
-    )
-
-    full = "\n".join([
-        title,
-        h1,
-        body
-    ])
-
-    cp = extract_cp(full)
-
-    price = extract_price(full)
-
-    surface = extract_surface(full)
-
-    date_vente = extract_date(full)
-
-    tribunal = extract_tribunal(full)
-
-    property_type = detect_type(full)
-
-    row = {
-
-        "url": url,
-
-        "titre": h1,
-
-        "cp": cp,
-
-        "prix": price,
-
-        "surface": surface,
-
-        "date_vente": date_vente,
-
-        "tribunal": tribunal,
-
-        "type": property_type,
-
-        "txt": full
-    }
-
-    log(
-        "✅ EXTRACTION",
-        json.dumps(
-            row,
-            indent=2,
-            ensure_ascii=False
-        )
-    )
-
-    return row
-
-# =========================================================
-# GEO
-# =========================================================
-
-def geocode_cp(df):
-
-    df["cp"] = df["cp"].astype(str)
-
-    out = df.merge(
-        geo,
-        on="cp",
-        how="left"
-    )
-
-    return out
-
-# =========================================================
-# MAP
-# =========================================================
-
-def build_map(df):
-
-    if len(df) == 0:
-        return
-
-    valid = df.dropna(
-        subset=["lat", "lon"]
-    )
-
-    if len(valid) == 0:
-        return
-
-    m = folium.Map(
-
-        location=[
-            valid["lat"].astype(float).mean(),
-            valid["lon"].astype(float).mean()
-        ],
-
-        zoom_start=6
-    )
-
-    for _, row in valid.iterrows():
-
-        try:
-
-            color = color_price(
-                row["prix"]
-            )
-
-            popup = f"""
-            <b>{row['type']}</b><br><br>
-
-            💰 Prix :
-            {row['prix']} €<br>
-
-            📮 CP :
-            {row['cp']}<br>
-
-            🏛 Tribunal :
-            {row['tribunal']}<br>
-
-            📅 Audience :
-            {row['date_vente']}<br>
-
-            📐 Surface :
-            {row['surface']}<br><br>
-
-            <a href="{row['url']}" target="_blank">
-            Ouvrir annonce
-            </a>
-            """
-
-            folium.CircleMarker(
-
-                location=[
-                    float(row["lat"]),
-                    float(row["lon"])
-                ],
-
-                radius=8,
-
-                color=color,
-
-                fill=True,
-
-                fill_opacity=0.8,
-
-                popup=folium.Popup(
-                    popup,
-                    max_width=350
-                )
-
-            ).add_to(m)
-
-        except:
-            pass
-
-    m.save(MAP_FILE)
-
-    log(
-        "🗺 MAP SAVED",
-        MAP_FILE
-    )
-
-# =========================================================
-# HISTORIQUE
-# =========================================================
-
-def load_histo():
-
-    if not os.path.exists(
-        HISTO_CSV
-    ):
-
-        return set()
-
-    try:
-
-        histo = pd.read_csv(
-            HISTO_CSV,
-            sep=";"
-        )
-
-        return set(
-            histo["id_unique"]
-        )
-
-    except:
-        return set()
-
-# =========================================================
-# MAIN SCRAPER
+# SCRAPE VENCH
 # =========================================================
 
 async def scrape():
 
     rows = []
 
-    known = load_histo()
-
-    log(
-        "📚 HISTORIQUE",
-        len(known)
-    )
+    seen = set()
 
     async with async_playwright() as p:
 
         browser = await p.chromium.launch(
-
-            headless=HEADLESS,
-
+            headless=True,
             args=[
-
                 "--no-sandbox",
-
-                "--disable-dev-shm-usage",
-
-                "--disable-blink-features=AutomationControlled"
-
+                "--disable-dev-shm-usage"
             ]
         )
 
         context = await browser.new_context(
-
             viewport={
-                "width": 1920,
-                "height": 1080
-            },
-
-            user_agent=(
-                "Mozilla/5.0 "
-                "(Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 "
-                "(KHTML, like Gecko) "
-                "Chrome/122.0 Safari/537.36"
-            )
+                "width": 1600,
+                "height": 4000
+            }
         )
 
         page = await context.new_page()
 
-        for page_num in range(
-            1,
-            MAX_PAGES + 1
-        ):
+        # =====================================================
+        # PAGES
+        # =====================================================
+
+        for page_num in range(1, 6):
 
             try:
 
@@ -625,48 +314,45 @@ async def scrape():
                         + f"?p={page_num}"
                     )
 
-                log(
-                    f"📄 PAGE {page_num}",
-                    url
-                )
+                print("")
+                print("=" * 80)
+                print(f"📄 PAGE {page_num}")
+                print(url)
+                print("=" * 80)
 
                 await page.goto(
-
                     url,
-
                     wait_until="domcontentloaded",
-
                     timeout=120000
                 )
 
-                await page.wait_for_timeout(
-                    5000
-                )
+                await page.wait_for_timeout(5000)
+
+                # =================================================
+                # DEBUG
+                # =================================================
 
                 await page.screenshot(
-
-                    path=(
-                        f"{DEBUG_DIR}/"
-                        f"page_{page_num}.png"
-                    ),
-
+                    path=f"debug_vench_page_{page_num}.png",
                     full_page=True
                 )
 
                 html = await page.content()
 
-                save_txt(
+                with open(
+                    f"debug_vench_page_{page_num}.html",
+                    "w",
+                    encoding="utf-8"
+                ) as f:
 
-                    f"{DEBUG_DIR}/"
-                    f"page_{page_num}.html",
+                    f.write(html)
 
-                    html
-                )
+                # =================================================
+                # LINKS
+                # =================================================
 
                 links = await page.eval_on_selector_all(
-
                     "a",
-
                     """
                     els => els
                         .map(e => e.href)
@@ -678,142 +364,129 @@ async def scrape():
 
                 links = list(set(links))
 
-                log(
-                    "🏠 NB ANNONCES",
-                    len(links)
-                )
+                print("")
+                print(f"🏠 {len(links)} annonces")
 
-                # =========================================
+                # =================================================
                 # DETAILS
-                # =========================================
+                # =================================================
 
                 for i, detail_url in enumerate(links):
 
                     try:
 
-                        log(
+                        print("")
+                        print("=" * 80)
+                        print(
                             f"🏠 DETAIL "
-                            f"{i+1}/{len(links)}",
-                            detail_url
+                            f"{i+1}/{len(links)}"
                         )
+                        print(detail_url)
+                        print("=" * 80)
 
                         detail = await context.new_page()
 
                         await detail.goto(
-
                             detail_url,
-
-                            wait_until=(
-                                "domcontentloaded"
-                            ),
-
+                            wait_until="domcontentloaded",
                             timeout=120000
                         )
 
-                        await detail.wait_for_timeout(
-                            3000
-                        )
-
-                        detail_html = await detail.content()
-
-                        save_txt(
-
-                            f"{DEBUG_DIR}/"
-                            f"detail_{page_num}_{i}.html",
-
-                            detail_html
-                        )
+                        await detail.wait_for_timeout(3000)
 
                         await detail.screenshot(
-
-                            path=(
-                                f"{DEBUG_DIR}/"
-                                f"detail_{page_num}_{i}.png"
-                            ),
-
+                            path=f"detail_{page_num}_{i}.png",
                             full_page=True
                         )
 
-                        row = parse_detail(
-                            detail_html,
-                            detail_url
-                        )
+                        txt = await detail.locator(
+                            "body"
+                        ).inner_text()
 
-                        # =================================
-                        # UNIQUE ID
-                        # =================================
+                        txt = clean(txt)
+
+                        title = await detail.title()
+
+                        full = title + "\n" + txt
+
+                        with open(
+                            f"detail_{page_num}_{i}.txt",
+                            "w",
+                            encoding="utf-8"
+                        ) as f:
+
+                            f.write(full)
+
+                        row = {}
+
+                        row["url"] = detail_url
+
+                        row["type"] = detect_type(full)
+
+                        row["prix"] = extract_price(full)
+
+                        row["cp"] = extract_cp(full)
+
+                        row["date_vente"] = extract_date(full)
+
+                        row["surface"] = extract_surface(full)
+
+                        row["tribunal"] = extract_tribunal(full)
+
+                        row["status"] = extract_status(full)
+
+                        # =========================================
+                        # TITRE
+                        # =========================================
+
+                        try:
+
+                            h1 = await detail.locator(
+                                "h1"
+                            ).inner_text()
+
+                            row["titre"] = clean(h1)
+
+                        except:
+
+                            row["titre"] = title
+
+                        # =========================================
+                        # UNIQUE
+                        # =========================================
 
                         row["id_unique"] = (
                             f"{row['url']}"
                         )
 
-                        # =================================
-                        # NEW ?
-                        # =================================
+                        if row["id_unique"] in seen:
+                            continue
 
-                        if row["id_unique"] not in known:
-
-                            log(
-                                "🆕 NOUVELLE ANNONCE"
-                            )
-
-                            msg = f"""
-🏠 <b>{row['type']}</b>
-
-💰 {row['prix']} €
-
-📮 {row['cp']}
-
-📅 {row['date_vente']}
-
-🏛 {row['tribunal']}
-
-🔗 {row['url']}
-"""
-
-                            telegram(msg)
+                        seen.add(
+                            row["id_unique"]
+                        )
 
                         rows.append(row)
+
+                        print("")
+                        print("✅ EXTRACTION")
+                        print(row)
 
                         await detail.close()
 
                     except Exception as e:
 
-                        log(
-                            "❌ DETAIL ERROR",
-                            str(e)
-                        )
+                        print("")
+                        print("❌ DETAIL ERROR")
+                        print(e)
 
                         traceback.print_exc()
 
-                # =========================================
-                # SAVE LIVE
-                # =========================================
-
-                live = pd.DataFrame(rows)
-
-                live.to_csv(
-
-                    OUTPUT_CSV,
-
-                    sep=";",
-
-                    index=False,
-
-                    encoding="utf-8-sig"
-                )
-
-                log(
-                    "💾 LIVE CSV SAVED",
-                    len(live)
-                )
-
             except Exception as e:
 
-                log(
-                    "❌ PAGE ERROR",
-                    str(e)
-                )
+                print("")
+                print("❌ PAGE ERROR")
+                print(e)
 
                 traceback.print_exc()
 
@@ -821,79 +494,367 @@ async def scrape():
 
     return pd.DataFrame(rows)
 
+
+# =========================================================
+# GEOLOCALISATION
+# =========================================================
+
+def geolocate(df):
+
+    geo = pd.read_csv(CSV_CP)
+
+    geo = geo[[
+        "code_postal",
+        "latitude",
+        "longitude"
+    ]]
+
+    geo.columns = [
+        "cp",
+        "lat",
+        "lon"
+    ]
+
+    geo["cp"] = (
+        geo["cp"]
+        .astype(str)
+        .str.strip()
+    )
+
+    df["cp"] = (
+        df["cp"]
+        .fillna("")
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.strip()
+    )
+
+    df = df.merge(
+        geo,
+        on="cp",
+        how="left"
+    )
+
+    print(
+        "📍 GEOLOCALISATION OK :",
+        df["lat"].notna().sum(),
+        "annonces"
+    )
+
+    return df
+
+
+# =========================================================
+# MAP
+# =========================================================
+
+def create_map(df):
+
+    m = folium.Map(
+        location=[46.5, 2.5],
+        zoom_start=6,
+        tiles="CartoDB positron"
+    )
+
+    css = """
+<style>
+.leaflet-div-icon{
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
+}
+.my-div-icon{
+    background:transparent !important;
+    border:none !important;
+}
+</style>
+"""
+
+    m.get_root().html.add_child(
+        folium.Element(css)
+    )
+
+    for _, row in df.iterrows():
+
+        try:
+
+            if pd.isna(row["lat"]):
+                continue
+
+            prix = row["prix"]
+
+            if prix is None:
+                color = "#666666"
+
+            elif prix < 100000:
+                color = "#ff0000"
+
+            elif prix < 200000:
+                color = "#8000ff"
+
+            elif prix < 300000:
+                color = "#00aa00"
+
+            else:
+                color = "#666666"
+
+            symbol = "€"
+
+            if row["type"] == "Appartement":
+                symbol = "🏢"
+
+            elif row["type"] == "Maison":
+                symbol = "🏠"
+
+            elif row["type"] == "Villa":
+                symbol = "🏡"
+
+            elif row["type"] == "Terrain":
+                symbol = "🌳"
+
+            elif row["type"] == "Immeuble":
+                symbol = "🏬"
+
+            popup = f"""
+<b>{row['type']}</b><br><br>
+
+💰 Prix : {row['prix']} €<br>
+
+📅 Vente : {row['date_vente']}<br>
+
+📍 CP : {row['cp']}<br>
+
+📐 Surface : {row['surface']}<br>
+
+🏛 Tribunal : {row['tribunal']}<br><br>
+
+📝 {row['titre']}<br><br>
+
+<a href="{row['url']}" target="_blank">
+Voir annonce
+</a>
+"""
+
+            html = f"""
+<div style="width:42px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:transparent;">
+    <div style="background:{color}; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; font-size:14px; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.4);">
+        {symbol}
+    </div>
+</div>
+"""
+
+            marker = folium.Marker(
+                location=[row["lat"], row["lon"]],
+                popup=folium.Popup(
+                    popup,
+                    max_width=350
+                ),
+                icon=DivIcon(
+                    html=html,
+                    class_name="my-div-icon",
+                    icon_size=(42, 42),
+                    icon_anchor=(21, 21)
+                )
+            )
+
+            marker.add_to(m)
+
+        except Exception as e:
+
+            print("❌ MARKER")
+            print(e)
+
+    m.save(OUTPUT_MAP)
+
+    print("✅ CARTE SAUVEGARDEE")
+
+
 # =========================================================
 # MAIN
 # =========================================================
 
 async def main():
 
-    log("🚀 START")
+    try:
 
-    df = await scrape()
+        print("🚀 SCRAPING VENCH")
 
-    # =====================================================
-    # GEO
-    # =====================================================
+        df = await scrape()
 
-    log("🌍 GEO")
+        print(f"📦 SCRAPE = {len(df)}")
 
-    df = geocode_cp(df)
+        if len(df) == 0:
 
-    # =====================================================
-    # SAVE FINAL
-    # =====================================================
+            send_telegram(
+                "❌ VENCH : aucune annonce scrapee"
+            )
 
-    df.to_csv(
+            return
 
-        OUTPUT_CSV,
+        # =====================================================
+        # HISTORIQUE
+        # =====================================================
 
-        sep=";",
+        if os.path.exists(HISTORY_FILE):
 
-        index=False,
+            try:
 
-        encoding="utf-8-sig"
-    )
+                old_df = pd.read_csv(
+                    HISTORY_FILE,
+                    sep=";",
+                    on_bad_lines="skip"
+                )
 
-    # =====================================================
-    # HISTORIQUE
-    # =====================================================
+            except:
 
-    histo = df.copy()
+                old_df = pd.DataFrame()
 
-    histo.to_csv(
+        else:
 
-        HISTO_CSV,
+            old_df = pd.DataFrame()
 
-        sep=";",
+        if "id_unique" not in old_df.columns:
 
-        index=False,
+            print("⚠️ HISTORIQUE CORROMPU")
 
-        encoding="utf-8-sig"
-    )
+            old_df = pd.DataFrame(
+                columns=["id_unique"]
+            )
 
-    log(
-        "📚 HISTO SAVED",
-        len(histo)
-    )
+        if len(old_df) > 0:
 
-    # =====================================================
-    # MAP
-    # =====================================================
+            old_ids = set(
+                old_df["id_unique"]
+                .astype(str)
+            )
 
-    build_map(df)
+        else:
 
-    # =====================================================
-    # STATS
-    # =====================================================
+            old_ids = set()
 
-    log(
-        "📊 FINAL DF",
-        df.shape
-    )
+        # =====================================================
+        # NOUVELLES
+        # =====================================================
 
-    print(df.head())
+        new_df = df[
+            ~df["id_unique"]
+            .astype(str)
+            .isin(old_ids)
+        ].copy()
 
-    log("🏁 FIN")
+        print(
+            f"🆕 NOUVELLES = {len(new_df)}"
+        )
+
+        # =====================================================
+        # SAVE HISTORIQUE
+        # =====================================================
+
+        combined = pd.concat(
+            [old_df, df],
+            ignore_index=True
+        )
+
+        combined = combined.drop_duplicates(
+            subset=["id_unique"],
+            keep="first"
+        )
+
+        cols = [
+            "id_unique",
+            "url",
+            "prix",
+            "cp",
+            "type",
+            "date_vente",
+            "status",
+            "titre"
+        ]
+
+        combined = combined[cols]
+
+        combined.to_csv(
+            HISTORY_FILE,
+            sep=";",
+            index=False,
+            encoding="utf-8-sig"
+        )
+
+        print("💾 HISTORIQUE OK")
+
+        # =====================================================
+        # AUCUNE NOUVEAUTE
+        # =====================================================
+
+        if len(new_df) == 0:
+
+            send_telegram(
+                "😴 VENCH : aucune nouvelle annonce"
+            )
+
+            return
+
+        # =====================================================
+        # GEO
+        # =====================================================
+
+        new_df = geolocate(new_df)
+
+        # =====================================================
+        # MAP
+        # =====================================================
+
+        create_map(new_df)
+
+        send_file(OUTPUT_MAP)
+
+        # =====================================================
+        # TELEGRAM
+        # =====================================================
+
+        send_telegram(
+            f"🔥 VENCH\n"
+            f"{len(new_df)} nouvelles annonces"
+        )
+
+        for _, row in new_df.iterrows():
+
+            msg = ""
+
+            msg += "🏠 ENCHERE\n\n"
+
+            msg += f"📍 Type : {row.get('type')}\n"
+
+            msg += f"💰 Prix : {row.get('prix')} €\n"
+
+            msg += f"📅 Vente : {row.get('date_vente')}\n"
+
+            msg += f"📍 CP : {row.get('cp')}\n\n"
+
+            msg += f"{row.get('titre')}\n\n"
+
+            msg += f"🔗 {row['url']}"
+
+            # send_telegram(msg)
+
+        print("✅ FIN")
+
+    except Exception as e:
+
+        print("❌ MAIN")
+        print(e)
+
+        traceback.print_exc()
+
+        send_telegram(
+            f"❌ ERREUR VENCH\n{e}"
+        )
 
 
-asyncio.run(main())
+# =========================================================
+# RUN
+# =========================================================
+
+if __name__ == "__main__":
+
+    asyncio.run(main())
