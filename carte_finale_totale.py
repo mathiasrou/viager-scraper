@@ -4,687 +4,263 @@ import re
 import folium
 import os
 import requests
-
 from playwright.async_api import async_playwright
 
-
+# ========== CONFIGURATION ==========
 URL = "https://www.costes-viager.com/acheter/annonces"
-
 HISTORY_FILE = "historique_ids.csv"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-
-# =========================================================
-# TELEGRAM
-# =========================================================
+# ========== TELEGRAM ==========
 def send_telegram(message):
-
-    token = os.getenv("TELEGRAM_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-    if not token or not chat_id:
-        print("❌ TOKEN ou CHAT_ID manquant")
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        print("❌ TELEGRAM_TOKEN ou CHAT_ID manquant")
         return
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    try:
+        requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": message})
+    except Exception as e:
+        print(f"❌ Erreur envoi Telegram : {e}")
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-
-    requests.post(
-        url,
-        data={
-            "chat_id": chat_id,
-            "text": message
-        }
-    )
-
-
-def file(path):
-
-    token = os.getenv("TELEGRAM_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-    if not token or not chat_id:
+def send_file(path):
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         return
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendDocument"
+    try:
+        with open(path, "rb") as f:
+            requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID}, files={"document": f})
+    except Exception as e:
+        print(f"❌ Erreur envoi fichier : {e}")
 
-    url = f"https://api.telegram.org/bot{token}/sendDocument"
-
-    with open(path, "rb") as f:
-
-        requests.post(
-            url,
-            data={"chat_id": chat_id},
-            files={"document": f}
-        )
-
-
-# =========================================================
-# SCRAPING
-# =========================================================
+# ========== SCRAPING ==========
 async def scrape():
-
     rows = []
-
     seen_urls = set()
 
-    # historique
-    if os.path.exists(HISTORY_FILE):
-
-        old = pd.read_csv(HISTORY_FILE)
-
-        old_urls = set(old["url"])
-
-    else:
-
-        old_urls = set()
-
     async with async_playwright() as p:
-
-        browser = await p.chromium.launch(
-            headless=True
-        )
-
+        browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
+        await page.goto(URL, timeout=60000)
 
-        await page.goto(
-            URL,
-            timeout=60000
-        )
-
-        # cookies
+        # Accepter les cookies
         try:
-
-            btn = await page.wait_for_selector(
-                "button:has-text('Accepter')",
-                timeout=5000
-            )
-
+            btn = await page.wait_for_selector("button:has-text('Accepter')", timeout=5000)
             await btn.click()
-
         except:
             pass
 
-        await page.wait_for_selector(
-            "rc-card-annonce"
-        )
+        await page.wait_for_selector("rc-card-annonce")
 
         while True:
-
-            cards = await page.query_selector_all(
-                "rc-card-annonce"
-            )
-
-            print(f"🧩 {len(cards)} cartes analysées")
+            cards = await page.query_selector_all("rc-card-annonce")
+            print(f"🧩 {len(cards)} cartes analysées sur cette page")
 
             for card in cards:
-
                 try:
-
                     a = await card.query_selector("a")
-
-                    href = (
-                        await a.get_attribute("href")
-                        if a else ""
-                    )
-
-                    url = (
-                        "https://www.costes-viager.com" + href
-                        if href else ""
-                    )
-
-                    if not url:
+                    href = await a.get_attribute("href") if a else ""
+                    url = "https://www.costes-viager.com" + href if href else ""
+                    if not url or url in seen_urls:
                         continue
-
-                    # doublons
-                    if url in seen_urls:
-                        continue
-
                     seen_urls.add(url)
 
-                    # stop historique
-                    if url in old_urls:
-
-                        print("🛑 STOP (ancienne annonce)")
-
-                        await browser.close()
-
-                        return pd.DataFrame(
-                            rows,
-                            columns=[
-                                "html",
-                                "txt",
-                                "url"
-                            ]
-                        )
-
                     html = await card.inner_html()
-
                     txt = await card.inner_text()
-
-                    rows.append({
-
-                        "html": html.strip(),
-
-                        "txt": txt.strip(),
-
-                        "url": url
-
-                    })
-
+                    rows.append({"html": html.strip(), "txt": txt.strip(), "url": url})
                 except Exception as e:
-
                     print("❌ erreur annonce", e)
 
-            # bouton afficher plus
-            btn = await page.query_selector(
-                "button:has-text('Afficher plus de résultats')"
-            )
-
+            # Tentative de charger la page suivante
+            btn = await page.query_selector("button:has-text('Afficher plus')")
             if not btn:
+                print("🚫 Plus de bouton 'Afficher plus' → fin du scraping")
                 break
 
-            await page.evaluate(
-                "(b) => b.click()",
-                btn
-            )
+            old_count = len(cards)
+            await btn.click()
 
-            await page.wait_for_timeout(3000)
+            # Attendre qu'au moins une nouvelle carte apparaisse
+            try:
+                await page.wait_for_function(
+                    """
+                    (oldCount) => {
+                        const cards = document.querySelectorAll('rc-card-annonce');
+                        return cards.length > oldCount;
+                    }
+                    """,
+                    arg=old_count,
+                    timeout=10000
+                )
+                print("✅ Nouvelle page chargée")
+            except:
+                print("⏳ Aucune nouvelle carte après clic, on arrête")
+                break
 
         await browser.close()
 
-    return pd.DataFrame(
-        rows,
-        columns=[
-            "html",
-            "txt",
-            "url"
-        ]
-    )
+    return pd.DataFrame(rows, columns=["html", "txt", "url"])
 
-
-# =========================================================
-# NETTOYAGE
-# =========================================================
+# ========== NETTOYAGE ==========
 def clean(txt):
-
     if pd.isna(txt):
         return ""
+    return txt.replace("\u202f", " ").replace("\xa0", " ").replace("\n", " ").strip()
 
-    return (
-        txt
-        .replace("\u202f", " ")
-        .replace("\xa0", " ")
-        .replace("\n", " ")
-        .strip()
-    )
-
-
-# =========================================================
-# EXTRACTION
-# =========================================================
+# ========== EXTRACTION ==========
 def process(df):
-
     if len(df) == 0:
         return df
 
     df["txt"] = df["txt"].apply(clean)
 
-    # =========================
-    # EXTRACTION ARGENT
-    # =========================
+    # Extraction des montants
     def extract_money(label, txt):
-
-        pattern = (
-            label +
-            r".*?([\d\s]+)\s?€"
-        )
-
-        m = re.search(
-            pattern,
-            txt,
-            re.I
-        )
-
+        pattern = label + r".*?([\d\s]+)\s?€"
+        m = re.search(pattern, txt, re.I)
         if not m:
             return None
+        digits = re.sub(r"[^\d]", "", m.group(1))
+        return int(digits) if digits else None
 
-        value = m.group(1)
+    df["bouquet"] = df["txt"].apply(lambda x: extract_money("Bouquet", x))
+    df["rente"] = df["txt"].apply(lambda x: extract_money("Rente", x))
 
-        digits = re.sub(
-            r"[^\d]",
-            "",
-            value
-        )
+    # Âge maximal (pour tous)
+    def extract_age(txt):
+        ages = re.findall(r"(\d{2})\s*ans", txt, re.I)
+        return max(map(int, ages)) if ages else None
 
-        if digits:
-            return int(digits)
+    df["age"] = df["txt"].apply(extract_age)
 
+    # Âge de la femme (si présente)
+    def extract_female_age(txt):
+        match = re.search(r"Femme\s*,?\s*(\d{2})\s*ans", txt, re.I)
+        if match:
+            return int(match.group(1))
         return None
 
-    # bouquet
-    df["bouquet"] = df["txt"].apply(
-        lambda x: extract_money(
-            "Bouquet",
-            x
-        )
-    )
+    df["femme_age"] = df["txt"].apply(extract_female_age)
 
-    # rente
-    df["rente"] = df["txt"].apply(
-        lambda x: extract_money(
-            "Rente",
-            x
-        )
-    )
-
-    # =========================
-    # AGE
-    # =========================
-    def extract_age(txt):
-
-        ages = re.findall(
-            r"(\d{2})\s*ans",
-            txt,
-            re.I
-        )
-
-        if not ages:
-            return None
-
-        ages = [int(x) for x in ages]
-
-        return max(ages)
-
-    df["age"] = df["txt"].apply(
-        extract_age
-    )
-
-    # =========================
-    # CP
-    # =========================
-    df["cp"] = df["txt"].str.extract(
-        r"\((\d{5})\)"
-    )
+    # Code postal
+    df["cp"] = df["txt"].str.extract(r"\((\d{5})\)")
 
     return df
 
+# ========== FILTRES ==========
+def filter_annonces(df):
+    # Rejet des vendues
+    filtre_vendu = df["txt"].str.contains("vendu", case=False, na=False)
 
-# =========================================================
-# DEBUG
-# =========================================================
-def debug(row):
+    # Détection de la présence d'une femme (seule ou en couple)
+    filtre_femme_presente = df["txt"].str.contains(r"Femme\s*,?\s*\d+\s*ans", regex=True, case=False, na=False)
 
-    txt = row["txt"]
+    # Pour les annonces avec femme, on garde uniquement si la femme a plus de 90 ans
+    # On crée un masque pour les annonces avec femme mais âge <= 90
+    filtre_femme_jeune = filtre_femme_presente & (df["femme_age"].fillna(0) <= 90)
 
-    age_matches = re.findall(
-        r"(\d{2})\s*ans",
-        txt,
-        re.I
-    )
+    # Rejet des rentes > 1800
+    filtre_rente = df["rente"].fillna(0) > 1800
 
-    bouquet_match = re.search(
-        r"Bouquet.*?([\d\s]+)\s?€",
-        txt,
-        re.I
-    )
+    # Rejet des bouquets > 150000
+    filtre_bouquet = df["bouquet"].fillna(0) > 150000
 
-    rente_match = re.search(
-        r"Rente.*?([\d\s]+)\s?€",
-        txt,
-        re.I
-    )
+    # Rejet final : vendu OU (femme jeune) OU rente trop élevée OU bouquet trop élevé
+    rejet = filtre_vendu | filtre_femme_jeune | filtre_rente | filtre_bouquet
 
-    cp_match = re.search(
-        r"\((\d{5})\)",
-        txt
-    )
+    rejected = df[rejet].copy()
+    valid = df[~rejet].copy()
 
-    debug = ""
+    print(f"✅ conservées : {len(valid)}")
+    print(f"❌ rejetées : {len(rejected)}")
+    return valid, rejected
 
-    debug += "🔍 DEBUG EXTRACTION\n\n"
-
-    debug += f"🔗 URL :\n{row['url']}\n\n"
-
-    debug += "🧾 TEXTE SOURCE :\n"
-    debug += txt[:3000]
-    debug += "\n\n"
-
-    debug += "====================\n"
-    debug += "🎯 RESULTATS EXTRAITS\n"
-    debug += "====================\n\n"
-
-    debug += f"👴 AGE FINAL = {row.get('age')}\n"
-    debug += f"➡️ MATCHES AGE = {age_matches}\n\n"
-
-    debug += f"💰 BOUQUET FINAL = {row.get('bouquet')}\n"
-
-    if bouquet_match:
-        debug += f"➡️ MATCH BOUQUET = {bouquet_match.group(0)}\n\n"
-    else:
-        debug += "➡️ MATCH BOUQUET = AUCUN\n\n"
-
-    debug += f"📆 RENTE FINAL = {row.get('rente')}\n"
-
-    if rente_match:
-        debug += f"➡️ MATCH RENTE = {rente_match.group(0)}\n\n"
-    else:
-        debug += "➡️ MATCH RENTE = AUCUN\n\n"
-
-    debug += f"📍 CP FINAL = {row.get('cp')}\n"
-
-    if cp_match:
-        debug += f"➡️ MATCH CP = {cp_match.group(0)}\n\n"
-    else:
-        debug += "➡️ MATCH CP = AUCUN\n\n"
-
-   #  send_telegram(debug[:4000])
-
-
-# =========================================================
-# CARTE
-# =========================================================
+# ========== CARTE ==========
 def create_map(valid_df, rejected_df):
+    m = folium.Map(location=[46.5, 2.5], zoom_start=6)
 
-    m = folium.Map(
-        location=[46.5, 2.5],
-        zoom_start=6
-    )
-
-    # =====================================================
-    # VALIDES
-    # =====================================================
-    for _, row in valid_df.dropna(
-        subset=["lat"]
-    ).iterrows():
-
-        txt = str(
-            row.get("txt", "")
-        ).lower()
-
+    for _, row in valid_df.dropna(subset=["lat"]).iterrows():
+        txt = str(row.get("txt", "")).lower()
         age = row.get("age")
-
         color = "green"
-
         if pd.notna(age):
-
             age = int(age)
+            if age < 72: color = "black"
+            elif age < 78: color = "green"
+            elif age < 84: color = "orange"
+            else: color = "red"
 
-            if age < 72:
-                color = "black"
+        icon_name = "home" if "maison" in txt else "building" if "appartement" in txt else "home"
+        popup = (f"<b>✅ ANNONCE VALIDEE</b><br><br>"
+                 f"👴 Age : {row.get('age')} ans<br>"
+                 f"💰 Bouquet : {row.get('bouquet')} €<br>"
+                 f"📆 Rente : {row.get('rente')} €/mois<br>"
+                 f"📍 CP : {row.get('cp')}<br><br>"
+                 f"<a href='{row['url']}' target='_blank'>Voir annonce</a>")
+        folium.Marker([row["lat"], row["lon"]], popup=folium.Popup(popup, max_width=300),
+                      icon=folium.Icon(color=color, icon=icon_name, prefix="fa")).add_to(m)
 
-            elif age < 78:
-                color = "green"
-
-            elif age < 84:
-                color = "orange"
-
-            else:
-                color = "red"
-
-        icon_name = "home"
-
-        if "appartement" in txt:
-            icon_name = "building"
-
-        elif "maison" in txt:
-            icon_name = "home"
-
-        popup = (
-            "<b>✅ ANNONCE VALIDEE</b><br><br>"
-            f"👴 Age : {row.get('age')} ans<br>"
-            f"💰 Bouquet : {row.get('bouquet')} €<br>"
-            f"📆 Rente : {row.get('rente')} €/mois<br>"
-            f"📍 CP : {row.get('cp')}<br><br>"
-            f"<a href='{row['url']}' target='_blank'>"
-            "Voir annonce"
-            "</a>"
-        )
-
-        folium.Marker(
-
-            [row["lat"], row["lon"]],
-
-            popup=folium.Popup(
-                popup,
-                max_width=300
-            ),
-
-            icon=folium.Icon(
-                color=color,
-                icon=icon_name,
-                prefix="fa"
-            )
-
-        ).add_to(m)
-
-    # =====================================================
-    # REJETEES
-    # =====================================================
-    for _, row in rejected_df.dropna(
-        subset=["lat"]
-    ).iterrows():
-
-        popup = (
-            "<b>❌ REJETEE</b><br><br>"
-            f"👴 Age : {row.get('age')} ans<br>"
-            f"💰 Bouquet : {row.get('bouquet')} €<br>"
-            f"📆 Rente : {row.get('rente')} €/mois<br>"
-            f"📍 CP : {row.get('cp')}<br><br>"
-            f"<a href='{row['url']}' target='_blank'>"
-            "Voir annonce"
-            "</a>"
-        )
-
-        folium.Marker(
-
-            [row["lat"], row["lon"]],
-
-            popup=folium.Popup(
-                popup,
-                max_width=300
-            ),
-
-            icon=folium.Icon(
-                color="lightgray",
-                icon="remove",
-                prefix="fa"
-            )
-
-        ).add_to(m)
+    for _, row in rejected_df.dropna(subset=["lat"]).iterrows():
+        popup = (f"<b>❌ REJETEE</b><br><br>"
+                 f"👴 Age : {row.get('age')} ans<br>"
+                 f"💰 Bouquet : {row.get('bouquet')} €<br>"
+                 f"📆 Rente : {row.get('rente')} €/mois<br>"
+                 f"📍 CP : {row.get('cp')}<br><br>"
+                 f"<a href='{row['url']}' target='_blank'>Voir annonce</a>")
+        folium.Marker([row["lat"], row["lon"]], popup=folium.Popup(popup, max_width=300),
+                      icon=folium.Icon(color="lightgray", icon="remove", prefix="fa")).add_to(m)
 
     m.save("carte_rene_costes.html")
 
-
-# =========================================================
-# MAIN
-# =========================================================
+# ========== MAIN ==========
 async def main():
-
     print("🚀 SCRAPING...")
-
     df = await scrape()
-
-    print("📊 EXTRACTION...")
-
-    df = process(df)
-
-    if len(df) == 0:
-
-        send_telegram(
-            "😴 Aucune nouvelle annonce"
-        )
-
+    if df.empty:
+        send_telegram("😴 Aucune annonce récupérée (site inaccessible ?)")
         return
 
-    # DEBUG
-    # send_debug(df.iloc[0])
+    print("📊 EXTRACTION...")
+    df = process(df)
 
-    # =====================================================
-    # FILTRES
-    # =====================================================
-
-    filtre_vendu = df["txt"].str.contains(
-        "vendu",
-        case=False,
-        na=False
-    )
-
-    filtre_femme = df["txt"].str.contains(
-        r"Femme\s*,?\s*\d+\s*ans",
-        regex=True,
-        case=False,
-        na=False
-    )
-
-    filtre_couple = df["txt"].str.contains(
-        r"Femme.*Homme|Homme.*Femme",
-        regex=True,
-        case=False,
-        na=False
-    )
-
-    filtre_rente = (
-        df["rente"].fillna(0) > 500
-    )
-
-    filtre_bouquet = (
-        df["bouquet"].fillna(0) > 150000
-    )
-
-    rejected = df[
-        filtre_vendu
-        |
-        filtre_femme
-        |
-        filtre_couple
-        |
-        filtre_rente
-        |
-        filtre_bouquet
-    ].copy()
-
-    valid = df[
-        ~df["url"].isin(
-            rejected["url"]
-        )
-    ].copy()
-
-    print(f"✅ conservées : {len(valid)}")
-
-    print(f"❌ rejetées : {len(rejected)}")
-
-    # =====================================================
-    # GEO
-    # =====================================================
-    geo = pd.read_csv(
-        "base-officielle-codes-postaux.csv"
-    )
-
-    geo = geo[[
-        "code_postal",
-        "latitude",
-        "longitude"
-    ]]
-
-    geo.columns = [
-        "cp",
-        "lat",
-        "lon"
-    ]
-
-    geo["cp"] = geo["cp"].astype(str)
-
-    valid["cp"] = valid["cp"].astype(str)
-
-    rejected["cp"] = rejected["cp"].astype(str)
-
-    valid = valid.merge(
-        geo,
-        on="cp",
-        how="left"
-    )
-
-    rejected = rejected.merge(
-        geo,
-        on="cp",
-        how="left"
-    )
-
-    # =====================================================
-    # HISTORIQUE
-    # =====================================================
+    # Charger l'historique
     if os.path.exists(HISTORY_FILE):
-
         old = pd.read_csv(HISTORY_FILE)
-
         old_urls = set(old["url"])
-
     else:
-
         old_urls = set()
 
-    new_valid = valid[
-        ~valid["url"].isin(old_urls)
-    ]
+    # Filtrer
+    valid, rejected = filter_annonces(df)
 
-    combined = pd.concat([
-        pd.DataFrame({
-            "url": list(old_urls)
-        }),
-        valid[["url"]]
-    ]).drop_duplicates()
+    # Nouvelles annonces (non présentes dans l'historique)
+    new_valid = valid[~valid["url"].isin(old_urls)]
 
-    combined.to_csv(
-        HISTORY_FILE,
-        index=False
-    )
+    # Mettre à jour l'historique
+    all_urls = old_urls.union(set(valid["url"]))
+    pd.DataFrame({"url": list(all_urls)}).to_csv(HISTORY_FILE, index=False)
 
-    # =====================================================
-    # TELEGRAM
-    # =====================================================
-    if len(new_valid) > 0:
+    # Envoi Telegram : un seul message avec le nombre
+    if not new_valid.empty:
+        msg = f"🏠 René Costes\n{len(new_valid)} nouvelle(s) annonce(s) viager (hommes seuls ou couples avec femme > 90 ans, rente ≤1800€, bouquet ≤150k€)"
+        send_telegram(msg)
+        # On envoie la carte
+        # Géocodage pour la carte
+        geo = pd.read_csv("base-officielle-codes-postaux.csv")
+        geo = geo[["code_postal", "latitude", "longitude"]]
+        geo.columns = ["cp", "lat", "lon"]
+        geo["cp"] = geo["cp"].astype(str)
 
-        send_telegram(
-            f"🔥 {len(new_valid)} nouvelles annonces"
-        )
+        # On fusionne avec les données filtrées pour avoir les coordonnées (pour toutes, même rejetées, pour la carte complète)
+        valid_geo = valid.merge(geo, on="cp", how="left")
+        rejected_geo = rejected.merge(geo, on="cp", how="left")
 
-        for _, row in new_valid.iterrows():
-
-            msg = ""
-
-            msg += "🏠 VIAGER\n\n"
-
-            msg += f"👴 Age : {row.get('age')}\n"
-
-            msg += f"💰 Bouquet : {row.get('bouquet')} €\n"
-
-            msg += f"📆 Rente : {row.get('rente')} €/mois\n"
-
-            msg += f"📍 CP : {row.get('cp')}\n\n"
-
-            msg += f"🔗 {row['url']}"
-
-            # send_telegram(msg)
-
+        create_map(valid_geo, rejected_geo)
+        send_file("carte_rene_costes.html")
     else:
-
-        send_telegram(
-            "😴 René Costes - pas de nouvelles annonces"
-        )
-
-    # =====================================================
-    # CARTE
-    # =====================================================
-    create_map(
-        valid,
-        rejected
-    )
-
-    send_file("carte_rene_costes.html")
+        send_telegram("😴 René Costes - pas de nouvelles annonces répondant aux critères")
 
     print("✅ FIN")
 
-
-# =========================================================
-# RUN
-# =========================================================
 if __name__ == "__main__":
-
     asyncio.run(main())
