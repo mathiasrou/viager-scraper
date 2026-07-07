@@ -4,13 +4,14 @@ import re
 import folium
 import os
 import requests
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 # ========== CONFIGURATION ==========
 URL = "https://www.costes-viager.com/acheter/annonces"
 HISTORY_FILE = "historique_ids.csv"
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+MAX_ANNONCES = 100  # Limite de cartes à scraper
 
 # ========== TELEGRAM ==========
 def send_telegram(message):
@@ -37,26 +38,33 @@ def send_file(path):
 async def scrape():
     rows = []
     seen_urls = set()
+    total_annonces = 0
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
+        print("🌐 Navigue vers l'URL...")
         await page.goto(URL, timeout=60000)
 
         # Accepter les cookies
         try:
             btn = await page.wait_for_selector("button:has-text('Accepter')", timeout=5000)
             await btn.click()
+            print("🍪 Cookies acceptés")
         except:
-            pass
+            print("⚠️ Pas de bannière cookies")
 
         await page.wait_for_selector("rc-card-annonce")
+        print("✅ Page initiale chargée")
 
         while True:
             cards = await page.query_selector_all("rc-card-annonce")
-            print(f"🧩 {len(cards)} cartes analysées sur cette page")
+            print(f"🧩 {len(cards)} cartes sur cette page")
 
             for card in cards:
+                if total_annonces >= MAX_ANNONCES:
+                    print(f"🛑 Limite de {MAX_ANNONCES} annonces atteinte, arrêt du scraping")
+                    break
                 try:
                     a = await card.query_selector("a")
                     href = await a.get_attribute("href") if a else ""
@@ -68,8 +76,13 @@ async def scrape():
                     html = await card.inner_html()
                     txt = await card.inner_text()
                     rows.append({"html": html.strip(), "txt": txt.strip(), "url": url})
+                    total_annonces += 1
+                    print(f"✅ Annonce #{total_annonces} récupérée : {url[:60]}...")
                 except Exception as e:
-                    print("❌ erreur annonce", e)
+                    print(f"❌ erreur annonce : {e}")
+
+            if total_annonces >= MAX_ANNONCES:
+                break
 
             # Tentative de charger la page suivante
             btn = await page.query_selector("button:has-text('Afficher plus')")
@@ -78,6 +91,7 @@ async def scrape():
                 break
 
             old_count = len(cards)
+            print("🔄 Clic sur 'Afficher plus'...")
             await btn.click()
 
             # Attendre qu'au moins une nouvelle carte apparaisse
@@ -93,11 +107,12 @@ async def scrape():
                     timeout=10000
                 )
                 print("✅ Nouvelle page chargée")
-            except:
+            except PlaywrightTimeoutError:
                 print("⏳ Aucune nouvelle carte après clic, on arrête")
                 break
 
         await browser.close()
+        print("🧹 Navigateur fermé")
 
     return pd.DataFrame(rows, columns=["html", "txt", "url"])
 
@@ -112,6 +127,7 @@ def process(df):
     if len(df) == 0:
         return df
 
+    print("🧹 Nettoyage des textes...")
     df["txt"] = df["txt"].apply(clean)
 
     # Extraction des montants
@@ -123,17 +139,19 @@ def process(df):
         digits = re.sub(r"[^\d]", "", m.group(1))
         return int(digits) if digits else None
 
+    print("💰 Extraction des bouquets et rentes...")
     df["bouquet"] = df["txt"].apply(lambda x: extract_money("Bouquet", x))
     df["rente"] = df["txt"].apply(lambda x: extract_money("Rente", x))
 
-    # Âge maximal (pour tous)
+    # Âge maximal
     def extract_age(txt):
         ages = re.findall(r"(\d{2})\s*ans", txt, re.I)
         return max(map(int, ages)) if ages else None
 
+    print("👴 Extraction des âges...")
     df["age"] = df["txt"].apply(extract_age)
 
-    # Âge de la femme (si présente)
+    # Âge de la femme
     def extract_female_age(txt):
         match = re.search(r"Femme\s*,?\s*(\d{2})\s*ans", txt, re.I)
         if match:
@@ -144,11 +162,13 @@ def process(df):
 
     # Code postal
     df["cp"] = df["txt"].str.extract(r"\((\d{5})\)")
+    print("📍 Codes postaux extraits")
 
     return df
 
 # ========== FILTRES ==========
 def filter_annonces(df):
+    print("🔍 Application des filtres...")
     # Rejet des vendues
     filtre_vendu = df["txt"].str.contains("vendu", case=False, na=False)
 
@@ -156,7 +176,6 @@ def filter_annonces(df):
     filtre_femme_presente = df["txt"].str.contains(r"Femme\s*,?\s*\d+\s*ans", regex=True, case=False, na=False)
 
     # Pour les annonces avec femme, on garde uniquement si la femme a plus de 90 ans
-    # On crée un masque pour les annonces avec femme mais âge <= 90
     filtre_femme_jeune = filtre_femme_presente & (df["femme_age"].fillna(0) <= 90)
 
     # Rejet des rentes > 1800
@@ -165,7 +184,7 @@ def filter_annonces(df):
     # Rejet des bouquets > 150000
     filtre_bouquet = df["bouquet"].fillna(0) > 150000
 
-    # Rejet final : vendu OU (femme jeune) OU rente trop élevée OU bouquet trop élevé
+    # Rejet final
     rejet = filtre_vendu | filtre_femme_jeune | filtre_rente | filtre_bouquet
 
     rejected = df[rejet].copy()
@@ -177,6 +196,7 @@ def filter_annonces(df):
 
 # ========== CARTE ==========
 def create_map(valid_df, rejected_df):
+    print("🗺️ Génération de la carte...")
     m = folium.Map(location=[46.5, 2.5], zoom_start=6)
 
     for _, row in valid_df.dropna(subset=["lat"]).iterrows():
@@ -211,56 +231,69 @@ def create_map(valid_df, rejected_df):
                       icon=folium.Icon(color="lightgray", icon="remove", prefix="fa")).add_to(m)
 
     m.save("carte_rene_costes.html")
+    print("💾 Carte sauvegardée")
 
 # ========== MAIN ==========
 async def main():
-    print("🚀 SCRAPING...")
-    df = await scrape()
-    if df.empty:
-        send_telegram("😴 Aucune annonce récupérée (site inaccessible ?)")
-        return
+    print("🚀 DÉMARRAGE DU SCRIPT")
+    try:
+        print("📡 SCRAPING...")
+        df = await scrape()
+        print(f"📦 Nombre d'annonces scrapées : {len(df)}")
+        if df.empty:
+            send_telegram("😴 Aucune annonce récupérée (site inaccessible ?)")
+            return
 
-    print("📊 EXTRACTION...")
-    df = process(df)
+        print("📊 EXTRACTION...")
+        df = process(df)
 
-    # Charger l'historique
-    if os.path.exists(HISTORY_FILE):
-        old = pd.read_csv(HISTORY_FILE)
-        old_urls = set(old["url"])
-    else:
-        old_urls = set()
+        # Charger l'historique
+        if os.path.exists(HISTORY_FILE):
+            old = pd.read_csv(HISTORY_FILE)
+            old_urls = set(old["url"])
+            print(f"📂 Historique : {len(old_urls)} URLs")
+        else:
+            old_urls = set()
+            print("📂 Pas d'historique")
 
-    # Filtrer
-    valid, rejected = filter_annonces(df)
+        # Filtrer
+        valid, rejected = filter_annonces(df)
 
-    # Nouvelles annonces (non présentes dans l'historique)
-    new_valid = valid[~valid["url"].isin(old_urls)]
+        # Nouvelles annonces
+        new_valid = valid[~valid["url"].isin(old_urls)]
+        print(f"🆕 Nouvelles annonces valides : {len(new_valid)}")
 
-    # Mettre à jour l'historique
-    all_urls = old_urls.union(set(valid["url"]))
-    pd.DataFrame({"url": list(all_urls)}).to_csv(HISTORY_FILE, index=False)
+        # Mettre à jour l'historique
+        all_urls = old_urls.union(set(valid["url"]))
+        pd.DataFrame({"url": list(all_urls)}).to_csv(HISTORY_FILE, index=False)
+        print("💾 Historique mis à jour")
 
-    # Envoi Telegram : un seul message avec le nombre
-    if not new_valid.empty:
-        msg = f"🏠 René Costes\n{len(new_valid)} nouvelle(s) annonce(s) viager (hommes seuls ou couples avec femme > 90 ans, rente ≤1800€, bouquet ≤150k€)"
-        send_telegram(msg)
-        # On envoie la carte
-        # Géocodage pour la carte
-        geo = pd.read_csv("base-officielle-codes-postaux.csv")
-        geo = geo[["code_postal", "latitude", "longitude"]]
-        geo.columns = ["cp", "lat", "lon"]
-        geo["cp"] = geo["cp"].astype(str)
+        # Envoi Telegram
+        if not new_valid.empty:
+            msg = f"🏠 René Costes\n{len(new_valid)} nouvelle(s) annonce(s) viager (hommes seuls ou couples avec femme > 90 ans, rente ≤1800€, bouquet ≤150k€)"
+            send_telegram(msg)
+            print("📨 Message Telegram envoyé")
 
-        # On fusionne avec les données filtrées pour avoir les coordonnées (pour toutes, même rejetées, pour la carte complète)
-        valid_geo = valid.merge(geo, on="cp", how="left")
-        rejected_geo = rejected.merge(geo, on="cp", how="left")
+            # Géocodage pour la carte
+            geo = pd.read_csv("base-officielle-codes-postaux.csv")
+            geo = geo[["code_postal", "latitude", "longitude"]]
+            geo.columns = ["cp", "lat", "lon"]
+            geo["cp"] = geo["cp"].astype(str)
 
-        create_map(valid_geo, rejected_geo)
-        send_file("carte_rene_costes.html")
-    else:
-        send_telegram("😴 René Costes - pas de nouvelles annonces répondant aux critères")
+            valid_geo = valid.merge(geo, on="cp", how="left")
+            rejected_geo = rejected.merge(geo, on="cp", how="left")
 
-    print("✅ FIN")
+            create_map(valid_geo, rejected_geo)
+            send_file("carte_rene_costes.html")
+            print("📨 Carte envoyée")
+        else:
+            send_telegram("😴 René Costes - pas de nouvelles annonces répondant aux critères")
+            print("📨 Message 'pas de nouvelles' envoyé")
+
+        print("✅ FIN DU SCRIPT")
+    except Exception as e:
+        print(f"❌ ERREUR GLOBALE : {e}")
+        send_telegram(f"❌ Erreur dans le script : {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
