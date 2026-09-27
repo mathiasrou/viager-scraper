@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Version du 27/09/2026 — run de déploiement GitHub Pages
 """
 main.py — orchestrateur unique.
 
@@ -8,8 +9,6 @@ main.py — orchestrateur unique.
   4. sauvegarde l'historique (une ligne / annonce)
   5. génère UNE SEULE carte globale (tuiles OSM, un point par annonce)
   6. envoie le LIEN de la carte hébergée sur GitHub Pages
-     (la visionneuse HTML de Telegram bloque les clics : un fichier
-      joint ne permet pas d'ouvrir les annonces)
 """
 
 import asyncio
@@ -81,7 +80,6 @@ async def main():
         print(f"🧹 Doublons supprimés : {len(rows) - len(uniques)}")
         print(f"🆕 Nouvelles annonces : {len(nouvelles)}")
 
-        # Historisation immédiate (une ligne par annonce)
         save_historique(nouvelles)
 
         if not nouvelles:
