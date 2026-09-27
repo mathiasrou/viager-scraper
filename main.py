@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# Version du 27/09/2026 — run de déploiement GitHub Pages
 """
 main.py — orchestrateur unique.
 
@@ -8,7 +7,8 @@ main.py — orchestrateur unique.
   3. applique les filtres métier (costes) puis le filtre CP
   4. sauvegarde l'historique (une ligne / annonce)
   5. génère UNE SEULE carte globale (tuiles OSM, un point par annonce)
-  6. envoie le LIEN de la carte hébergée sur GitHub Pages
+  6. envoie la carte en FICHIER Telegram (sendDocument) :
+     méthode d'origine dont les popups fonctionnaient dans Telegram
 """
 
 import asyncio
@@ -18,7 +18,7 @@ from datetime import datetime
 import pandas as pd
 
 from viager_common import (
-    send_telegram, CARTE_URL,
+    send_telegram, send_file,
     save_historique, charge_historique, deduplique,
     filtre_cp, filtres_costes, geolocate, create_global_map,
 )
@@ -99,20 +99,14 @@ async def main():
         df_new = geolocate(df_new)
         create_global_map(df_new)
 
-        # ---------- 6) TELEGRAM : le LIEN de la carte ----------
+        # ---------- 6) TELEGRAM : la carte en FICHIER (méthode d'origine) ----------
         par_site = df_new["site"].value_counts().to_dict()
         detail = "\n".join(f"• {s} : {n}" for s, n in par_site.items())
-        if CARTE_URL:
-            send_telegram(
-                f"🗺️ <b>{len(df_new)} nouvelle(s) annonce(s)</b>\n"
-                f"{detail}\n\n"
-                f'<a href="{CARTE_URL}">Ouvrir la carte</a>'
-            )
-        else:
-            send_telegram(
-                f"🗺️ {len(df_new)} nouvelle(s) annonce(s)\n{detail}\n"
-                f"⚠️ CARTE_URL non configurée"
-            )
+        send_telegram(
+            f"🗺️ {len(df_new)} nouvelle(s) annonce(s)\n"
+            f"{detail}"
+        )
+        send_file("carte_globale.html")
 
         print("✅ FIN")
 
