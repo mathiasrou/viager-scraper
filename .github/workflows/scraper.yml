@@ -4,6 +4,13 @@ on:
   schedule:
     - cron: '0 11 * * *'
   workflow_dispatch:
+  # Lancement manuel : un push qui touche ce fichier déclenche un run.
+  # Les commits du bot (historique_global.csv) ne touchent pas ce fichier,
+  # donc pas de boucle.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/scraper.yml'
 
 permissions:
   contents: write
