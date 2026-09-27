@@ -2,13 +2,11 @@
 """
 main.py — orchestrateur unique.
 
-Remplace les 5 scripts indépendants :
   1. lance les 5 scrapers (un échec de site n'arrête pas les autres)
   2. dédoublonne TOUTES les annonces entre sites et avec l'historique
   3. applique les filtres métier (costes) puis le filtre CP
-  4. génère UNE SEULE carte globale
-  5. envoie UN SEUL message Telegram avec les vrais liens
-  6. sauvegarde l'historique global unique
+  4. sauvegarde l'historique (AVANT toute géoloc, une ligne / annonce)
+  5. envoie UNE SEULE carte globale + un court résumé Telegram
 """
 
 import asyncio
@@ -18,7 +16,7 @@ from datetime import datetime
 import pandas as pd
 
 from viager_common import (
-    send_telegram, send_telegram_long, send_file,
+    send_telegram, send_file,
     save_historique, charge_historique, deduplique,
     filtre_cp, filtres_costes, geolocate, create_global_map,
 )
@@ -75,12 +73,14 @@ async def main():
         print(f"✅ Après filtres métier : {len(df)} annonces")
 
         # ---------- 3) DÉDOUBLONNAGE GLOBAL ----------
-        #   - entre sites (une même annonce sur 2 sites => 1 seule)
-        #   - contre l'historique (jamais re-notifiée)
         connues = charge_historique()
         nouvelles, uniques = deduplique(df.to_dict("records"), connues)
         print(f"🧹 Doublons supprimés : {len(rows) - len(uniques)}")
         print(f"🆕 Nouvelles annonces : {len(nouvelles)}")
+
+        # On historise TOUT de suite (une ligne par annonce, AVANT
+        # géoloc) pour ne jamais re-notifier, même hors zone.
+        save_historique(nouvelles)
 
         if not nouvelles:
             send_telegram("😴 Aucune nouvelle annonce (5 sites)")
@@ -93,24 +93,23 @@ async def main():
         print(f"📍 Filtre CP : {avant} → {len(df_new)} annonces")
         if len(df_new) == 0:
             send_telegram("😴 Nouvelles annonces, mais hors de ta zone")
-            # On les enregistre quand même pour ne pas les revoir
-            save_historique(nouvelles)
             return
 
         # ---------- 5) CARTE GLOBALE UNIQUE ----------
+        # geolocate garantit UNE ligne (donc UN point) par annonce
         df_new = geolocate(df_new)
         create_global_map(df_new)
         send_file("carte_globale.html")
 
-        # ---------- 6) UN SEUL MESSAGE TELEGRAM ----------
-        send_telegram_long(
-            df_new.to_dict("records"),
-            header=(f"🔥 {len(df_new)} nouvelle(s) annonce(s)\n"
-                    f"({len(uniques)} uniques, doublons filtrés)"),
+        # ---------- 6) TELEGRAM : court résumé seulement ----------
+        par_site = df_new["site"].value_counts().to_dict()
+        detail = "\n".join(f"• {s} : {n}" for s, n in par_site.items())
+        send_telegram(
+            f"🗺️ {len(df_new)} nouvelle(s) annonce(s)\n"
+            f"{detail}\n"
+            f"Carte envoyée ci-dessus — un point par annonce."
         )
 
-        # ---------- 7) HISTORIQUE ----------
-        save_historique(df_new.to_dict("records"))
         print("✅ FIN")
 
     except Exception as e:
