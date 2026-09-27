@@ -18,7 +18,6 @@ on:
 permissions:
   contents: write
 
-# Un seul run à la fois : les runs en attente sont annulés
 concurrency:
   group: scraper-run
   cancel-in-progress: true
@@ -51,8 +50,8 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CP_AUTORISES: ${{ vars.CP_AUTORISES }}
-          FILTRE_LITTORAL: ${{ vars.FILTRE_LITTORAL }}
-          FILTRE_TENSION: ${{ vars.FILTRE_TENSION }}
+          FILTRE_LITTORAL: ${{ vars.FILTRE_LITTORAL || '1' }}
+          FILTRE_TENSION: ${{ vars.FILTRE_TENSION || '1' }}
         run: timeout 30m xvfb-run python main.py
 
       - name: Commit carte + historique

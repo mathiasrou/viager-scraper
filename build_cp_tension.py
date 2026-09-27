@@ -6,17 +6,13 @@ Construit cp_tension_locative.csv : les codes postaux des villes
 françaises agréables à vivre ET en forte tension locative
 (toute la France, pas seulement le littoral).
 
-Sources des classements croisés (2025-2026) :
-- Baromètre de la tension locative Manda S1 2026 (candidats/annonce,
-  score de tension) : Nice, Paris, Marseille, Lyon, Bordeaux,
-  Montpellier, Toulouse...
-- Tensiomètre LocService (ratio demande/offre) : Lyon, Rennes, Paris,
-  Caen, Annecy, Bordeaux, Angers...
-- Palmarès "Villes où il fait bon vivre" (cadre de vie) : Annecy,
-  La Rochelle, Bayonne, Arcachon, Antibes...
+Sources croisées (2025-2026) :
+- Baromètre Manda S1 2026 (candidats/annonce, score de tension)
+- Tensiomètre LocService (ratio demande/offre)
+- Palmarès "Villes et villages où il fait bon vivre" (cadre de vie)
 
-La liste VILLES ci-dessous est ÉDITABLE : ajoute ou retire
-librement des noms de communes (casse et accents indifférents).
+La liste VILLES est ÉDITABLE : ajoute ou retire librement des noms
+de communes (casse et accents indifférents).
 
 Sortie : cp_tension_locative.csv (;, utf-8-sig)
 Colonnes : code_postal;commune
@@ -32,14 +28,30 @@ OUT = "cp_tension_locative.csv"
 
 # Villes agréables à vivre + forte tension locative (France entière).
 VILLES = [
-    # Grandes métropoles en forte tension (baromètre Manda 2026)
-    "Paris", "Lyon", "Villeurbanne", "Bordeaux", "Marseille",
-    "Montpellier", "Toulouse", "Nice", "Rennes", "Nantes",
-    "Strasbourg", "Grenoble",
-    # Villes moyennes agréables ET tendues (cadre de vie + demande)
-    "Annecy", "Angers", "Caen", "La Rochelle", "Bayonne",
-    "Arcachon", "Aix-en-Provence", "Antibes", "Menton",
-    "Annemasse", "Thonon-les-Bains", "Lille", "Le Havre",
+    # --- Métropoles en très forte tension (Manda S1 2026, LocService) ---
+    "Paris", "Boulogne-Billancourt", "Neuilly-sur-Seine", "Saint-Cloud",
+    "Vincennes", "Saint-Mandé",
+    "Lyon", "Villeurbanne", "Bordeaux", "Marseille", "Montpellier",
+    "Toulouse", "Nice", "Rennes", "Nantes", "Strasbourg", "Lille",
+    "Grenoble",
+    # --- Villes agréables à vivre ET tendues (France entière) ---
+    "Annecy", "Annemasse", "Thonon-les-Bains", "Aix-en-Provence",
+    "Angers", "Caen", "La Rochelle", "Bayonne", "Anglet", "Biarritz",
+    "Arcachon", "La Teste-de-Buch", "Lège-Cap-Ferret", "Le Havre",
+    # --- Littoral attractif à forte demande (Manche/Atlantique) ---
+    "Deauville", "Honfleur", "Le Touquet-Paris-Plage", "Dinard",
+    "Saint-Malo", "Vannes", "Quiberon", "Carnac",
+    "La Baule-Escoublac", "Le Croisic", "Les Sables-d'Olonne",
+    "Pornic", "Royan",
+    "Saint-Jean-de-Luz", "Hendaye", "Guéthary", "Sète",
+    # --- Île de Ré (très tendu, très prisé) ---
+    "Saint-Martin-de-Ré", "Sainte-Marie-de-Ré", "La Flotte",
+    "Rivedoux-Plage", "La Couarde-sur-Mer", "Les Portes-en-Ré",
+    "Ars-en-Ré", "Loix",
+    # --- Littoral méditerranéen tendu ---
+    "Antibes", "Cannes", "Menton", "Cassis", "Saint-Raphaël",
+    "Fréjus", "Hyères", "Six-Fours-les-Plages", "Sanary-sur-Mer",
+    "Bandol", "Collioure",
 ]
 
 
@@ -68,9 +80,6 @@ def main():
 
     print(f"✅ {OUT} : {len(out)} CP, "
           f"{out['commune'].nunique()} villes")
-    for ville, n in out.groupby("commune")["code_postal"].nunique()\
-            .sort_values(ascending=False).items():
-        print(f"     {ville} : {n} CP")
 
 
 if __name__ == "__main__":
