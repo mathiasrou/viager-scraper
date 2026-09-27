@@ -40,25 +40,20 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
 
-      - name: Run all scrapers
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          CP_AUTORISES: ${{ vars.CP_AUTORISES }}
-          # La carte est commitée dans le dépôt puis servie par
-          # raw.githack (HTML avec le bon type MIME, liens cliquables).
-          # Pages est inutilisable ici : l'API de création de site
-          # exige un token utilisateur, pas le token de l'app.
-          CARTE_URL: https://rawcdn.githack.com/mathiasrou/viager-scraper/main/carte_globale.html
-          FILTRE_LITTORAL: \${{ vars.FILTRE_LITTORAL }}
-          FILTRE_TENSION: \${{ vars.FILTRE_TENSION }}
-        run: timeout 30m xvfb-run python main.py
-
       - name: Base CP bord de mer
         run: python build_cp_bord_de_mer.py
 
       - name: Base CP tension locative
         run: python build_cp_tension.py
+
+      - name: Run all scrapers
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CP_AUTORISES: ${{ vars.CP_AUTORISES }}
+          FILTRE_LITTORAL: ${{ vars.FILTRE_LITTORAL }}
+          FILTRE_TENSION: ${{ vars.FILTRE_TENSION }}
+        run: timeout 30m xvfb-run python main.py
 
       - name: Commit carte + historique
         run: |

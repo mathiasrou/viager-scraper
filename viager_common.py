@@ -7,6 +7,7 @@ Base commune à tous les scrapers :
 - historique global UNIQUE (historique_global.csv)
 - dédoublonnage inter-sites (titre flou + CP + prix)
 - filtres métier (rente, bouquet, âge, villes autorisées)
+- filtres géographiques (bord de mer / tension locative)
 - géolocalisation par code postal (UNE seule coordonnée par CP)
 - carte Folium GLOBALE avec marqueurs standard + popups
 """
@@ -74,9 +75,7 @@ def send_telegram(message):
     try:
         requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            data={"chat_id": chat
-
-_id, "text": message},
+            data={"chat_id": chat_id, "text": message},
             timeout=30,
         )
         return True
@@ -151,9 +150,7 @@ def extract_price(txt):
         return None
 
 
-d
-e
-f extract_cp(txt):
+def extract_cp(txt):
     try:
         m = re.findall(r"\b(\d{5})\b", txt)
         return m[0] if m else None
@@ -219,9 +216,7 @@ def deduplique(rows, connues=None):
     connues = connues or []
     nouvelles = []
     uniques = []
-    for row in 
-ro
-ws:
+    for row in rows:
         if meme_annonce(row, uniques) or meme_annonce(row, connues):
             continue
         uniques.append(row)
@@ -309,8 +304,7 @@ def filtres_costes(df):
 
     def rejet(row):
         txt = (row.get("txt") or "").lower()
-        if "vendu" i
-n txt:
+        if "vendu" in txt:
             return True
         if row.get("rente") and row["rente"] > RENTE_MAX:
             return True
@@ -345,8 +339,7 @@ def geolocate(df):
     geo["cp"] = geo["cp"].astype(str).str.strip()
     geo = geo.drop_duplicates(subset=["cp"], keep="first")
     df["cp"] = (df["cp"].fillna("").astype(str)
-                .str.replace(".0", "", regex=Fals
-e).str.strip())
+                .str.replace(".0", "", regex=False).str.strip())
     df = df.merge(geo, on="cp", how="left")
     print(f"📍 GEOLOCALISATION : {len(df)} annonces "
           f"({df['lat'].notna().sum()} géolocalisées)")
@@ -356,8 +349,7 @@ e).str.strip())
 # =========================================================
 # CARTE GLOBALE UNIQUE
 # =========================================================
-# Marqueurs standard folium.Icon (comme l'ancienne carte Costes)
-# + popup construit comme dans le code d'origine.
+# Marqueurs standard folium.Icon + popup comme code d'origine.
 
 def _popup(row):
     """Popup exactement dans le style du code d'origine."""
@@ -365,8 +357,7 @@ def _popup(row):
     if row.get("prix") is not None and not pd.isna(row.get("prix")):
         lignes.append(f"💰 Prix : {row['prix']} €<br>")
     if row.get("rente") is not None and not pd.isna(row.get("rente")):
-        lignes.
-append(f"📆 Rente : {row['rente']} €/mois<br>")
+        lignes.append(f"📆 Rente : {row['rente']} €/mois<br>")
     if row.get("bouquet") is not None and not pd.isna(row.get("bouquet")):
         lignes.append(f"💼 Bouquet : {row['bouquet']} €<br>")
     if row.get("age") is not None and not pd.isna(row.get("age")):
@@ -379,20 +370,17 @@ append(f"📆 Rente : {row['rente']} €/mois<br>")
         lignes.append(f"📍 CP : {row['cp']}<br><br>")
     if row.get("titre"):
         lignes.append(f"📝 {row['titre']}<br><br>")
-    lignes.append(f'<a href="{row["url"]}" target="_blank">Voir annonce</a>')
+    lignes.append(f"<a href=\"{row['url']}\" target=\"_blank\">Voir annonce</a>")
     return "".join(lignes)
 
 
 def create_global_map(df, output=OUTPUT_MAP):
-    """Une seule carte pour tous les sites. UN point par annonce.
-    Marqueurs folium.Icon standard : l'encart popup au clic
-    fonctionne partout, comme dans l'ancien code."""
+    """Une seule carte pour tous les sites. UN point par annonce."""
     df = df.copy().drop_duplicates(subset=["url"])
     m = folium.Map(location=[46.5, 2.5], zoom_start=6,
                    tiles="OpenStreetMap")
 
     for _, row in df.iterrows():
-
         try:
             if pd.isna(row.get("lat")):
                 continue
