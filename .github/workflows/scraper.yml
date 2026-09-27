@@ -12,6 +12,7 @@ on:
       - 'viager_common.py'
       - 'requirements.txt'
       - 'build_cp_bord_de_mer.py'
+      - 'build_cp_tension.py'
       - '.github/workflows/scraper.yml'
 
 permissions:
@@ -50,16 +51,20 @@ jobs:
           # exige un token utilisateur, pas le token de l'app.
           CARTE_URL: https://rawcdn.githack.com/mathiasrou/viager-scraper/main/carte_globale.html
           FILTRE_LITTORAL: \${{ vars.FILTRE_LITTORAL }}
+          FILTRE_TENSION: \${{ vars.FILTRE_TENSION }}
         run: timeout 30m xvfb-run python main.py
 
       - name: Base CP bord de mer
         run: python build_cp_bord_de_mer.py
 
+      - name: Base CP tension locative
+        run: python build_cp_tension.py
+
       - name: Commit carte + historique
         run: |
           git config --global user.name "bot"
           git config --global user.email "bot@bot.com"
-          git add carte_globale.html historique_global.csv cp_bord_de_mer.csv || true
+          git add carte_globale.html historique_global.csv cp_bord_de_mer.csv cp_tension_locative.csv || true
           git commit -m "update carte + historique" || echo "no changes"
           git pull --rebase || true
           git push || true

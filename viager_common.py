@@ -75,6 +75,7 @@ def send_telegram(message):
         requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             data={"chat_id": chat
+
 _id, "text": message},
             timeout=30,
         )
@@ -150,7 +151,8 @@ def extract_price(txt):
         return None
 
 
-de
+d
+e
 f extract_cp(txt):
     try:
         m = re.findall(r"\b(\d{5})\b", txt)
@@ -217,7 +219,8 @@ def deduplique(rows, connues=None):
     connues = connues or []
     nouvelles = []
     uniques = []
-    for row in ro
+    for row in 
+ro
 ws:
         if meme_annonce(row, uniques) or meme_annonce(row, connues):
             continue
@@ -263,27 +266,38 @@ def save_historique(rows):
 # =========================================================
 
 LITTORAL_FILE = "cp_bord_de_mer.csv"
+TENSION_FILE = "cp_tension_locative.csv"
+
 
 def filtre_cp(df):
     """
     Ne garde que les CP autorisés.
     1) CP_AUTORISES si la variable est renseignée
-    2) sinon si FILTRE_LITTORAL=1 : uniquement les codes postaux
-       en bord de mer (base cp_bord_de_mer.csv, construite par
-       build_cp_bord_de_mer.py à partir de la liste officielle
-       des communes de la loi littoral).
+    2) FILTRE_LITTORAL=1 : CP en bord de mer (loi littoral,
+       base cp_bord_de_mer.csv)
+    3) FILTRE_TENSION=1 : CP des villes agréables à vivre en
+       forte tension locative, France entière (cp_tension_locative.csv)
+    Les filtres s'additionnent (union des zones).
     """
     autorises = set(str(c).strip() for c in CP_AUTORISES if str(c).strip())
-    if not autorises and os.getenv("FILTRE_LITTORAL", "0") == "1" and os.path.exists(LITTORAL_FILE):
+    if os.getenv("FILTRE_LITTORAL", "0") == "1" and os.path.exists(LITTORAL_FILE):
         try:
             litt = pd.read_csv(LITTORAL_FILE, sep=";", dtype=str)
-            autorises = set(litt["code_postal"].astype(str).str.strip())
-            print(f"🌊 FILTRE LITTORAL : {len(autorises)} CP bord de mer")
+            autorises |= set(litt["code_postal"].astype(str).str.strip())
+            print(f"🌊 FILTRE LITTORAL : {litt['code_postal'].nunique()} CP bord de mer")
         except Exception as e:
             print(f"⚠️ FILTRE LITTORAL impossible : {e}")
+    if os.getenv("FILTRE_TENSION", "0") == "1" and os.path.exists(TENSION_FILE):
+        try:
+            tens = pd.read_csv(TENSION_FILE, sep=";", dtype=str)
+            autorises |= set(tens["code_postal"].astype(str).str.strip())
+            print(f"🔥 FILTRE TENSION : {tens['code_postal'].nunique()} CP villes tendues")
+        except Exception as e:
+            print(f"⚠️ FILTRE TENSION impossible : {e}")
     if not autorises:
         return df
     return df[df["cp"].astype(str).str.strip().isin(autorises)]
+
 
 def filtres_costes(df):
     """
@@ -331,7 +345,8 @@ def geolocate(df):
     geo["cp"] = geo["cp"].astype(str).str.strip()
     geo = geo.drop_duplicates(subset=["cp"], keep="first")
     df["cp"] = (df["cp"].fillna("").astype(str)
-                .str.replace(".0", "", regex=False).str.strip())
+                .str.replace(".0", "", regex=Fals
+e).str.strip())
     df = df.merge(geo, on="cp", how="left")
     print(f"📍 GEOLOCALISATION : {len(df)} annonces "
           f"({df['lat'].notna().sum()} géolocalisées)")
@@ -377,6 +392,7 @@ def create_global_map(df, output=OUTPUT_MAP):
                    tiles="OpenStreetMap")
 
     for _, row in df.iterrows():
+
         try:
             if pd.isna(row.get("lat")):
                 continue
