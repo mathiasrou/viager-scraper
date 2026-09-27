@@ -11,14 +11,12 @@ on:
       - 'scrapers.py'
       - 'viager_common.py'
       - 'requirements.txt'
+      - '.github/workflows/scraper.yml'
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
-# Un seul run à la fois : les runs en attente sont annulés,
-# donc plus jamais 5 messages Telegram d'un coup.
+# Un seul run à la fois : les runs en attente sont annulés
 concurrency:
   group: scraper-run
   cancel-in-progress: true
@@ -45,38 +43,18 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CP_AUTORISES: ${{ vars.CP_AUTORISES }}
-          CARTE_URL: https://mathiasrou.github.io/viager-scraper/carte_globale.html
+          # La carte est commitée dans le dépôt puis servie par
+          # raw.githack (HTML avec le bon type MIME, liens cliquables).
+          # Pages est inutilisable ici : l'API de création de site
+          # exige un token utilisateur, pas le token de l'app.
+          CARTE_URL: https://rawcdn.githack.com/mathiasrou/viager-scraper/main/carte_globale.html
         run: timeout 30m xvfb-run python main.py
 
-      - name: Prepare publish folder
-        run: |
-          mkdir -p site
-          if [ -f carte_globale.html ]; then
-            cp carte_globale.html site/
-          else
-            echo "<html><body>Aucune carte générée ce run</body></html>" > site/carte_globale.html
-          fi
-
-      # enablement: true => ACTIVE GitHub Pages automatiquement,
-      # aucune manipulation dans Settings > Pages nécessaire.
-      - name: Setup Pages (avec activation auto)
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Upload map artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./site
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
-
-      - name: Commit historique
+      - name: Commit carte + historique
         run: |
           git config --global user.name "bot"
           git config --global user.email "bot@bot.com"
-          git add historique_global.csv || true
-          git commit -m "update historique" || echo "no changes"
+          git add carte_globale.html historique_global.csv || true
+          git commit -m "update carte + historique" || echo "no changes"
           git pull --rebase || true
           git push || true
