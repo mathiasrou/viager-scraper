@@ -4,8 +4,6 @@ on:
   schedule:
     - cron: '0 11 * * *'
   workflow_dispatch:
-  # Un push qui touche le code ou ce fichier déclenche un run.
-  # Les commits du bot (historique_global.csv) ne déclenchent rien.
   push:
     branches: [main]
     paths:
@@ -40,8 +38,24 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CP_AUTORISES: ${{ vars.CP_AUTORISES }}
+          CARTE_URL: https://mathiasrou.github.io/viager-scraper/carte_globale.html
         run: timeout 30m xvfb-run python main.py
 
+      # Publication de la carte sur GitHub Pages (branche gh-pages).
+      # Pages doit être activé une fois : Settings > Pages >
+      # Deploy from a branch > gh-pages / (root)
+      - name: Publish map to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./map_publish
+          publish_branch: gh-pages
+          keep_files: true
+          force_orphan: false
+
+      # Prépare le contenu à publier AVANT l'étape précédente est
+      # impossible : le job ordonne les steps séquentiellement, on
+      # copie donc le fichier ici via un petit script dans le step run.
       - name: Commit historique
         run: |
           git config --global user.name "bot"
