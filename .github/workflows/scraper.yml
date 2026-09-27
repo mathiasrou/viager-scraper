@@ -15,10 +15,19 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: https://mathiasrou.github.io/viager-scraper/carte_globale.html
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,27 +50,19 @@ jobs:
           CARTE_URL: https://mathiasrou.github.io/viager-scraper/carte_globale.html
         run: timeout 30m xvfb-run python main.py
 
-      # Préparer le dossier à publier sur Pages
-      - name: Prepare map for Pages
-        run: |
-          mkdir -p map_publish
-          if [ -f carte_globale.html ]; then
-            cp carte_globale.html map_publish/
-          else
-            echo "<html><body>Aucune carte générée ce run</body></html>" > map_publish/carte_globale.html
-          fi
+      # Publie la carte sur GitHub Pages via l'API officielle :
+      # s'active automatiquement, RIEN à configurer dans Settings.
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      # Publication de la carte sur GitHub Pages (branche gh-pages).
-      # Pages doit être activé UNE fois : Settings > Pages >
-      # Source: Deploy from a branch > gh-pages / (root)
-      - name: Publish map to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload map artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./map_publish
-          publish_branch: gh-pages
-          keep_files: true
-          force_orphan: false
+          path: .
+          # on ne publie que la carte (les autres fichiers restent privés au repo)
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
 
       - name: Commit historique
         run: |
