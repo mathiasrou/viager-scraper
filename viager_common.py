@@ -74,7 +74,8 @@ def send_telegram(message):
     try:
         requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            data={"chat_id": chat_id, "text": message},
+            data={"chat_id": chat
+_id, "text": message},
             timeout=30,
         )
         return True
@@ -149,7 +150,8 @@ def extract_price(txt):
         return None
 
 
-def extract_cp(txt):
+de
+f extract_cp(txt):
     try:
         m = re.findall(r"\b(\d{5})\b", txt)
         return m[0] if m else None
@@ -215,7 +217,8 @@ def deduplique(rows, connues=None):
     connues = connues or []
     nouvelles = []
     uniques = []
-    for row in rows:
+    for row in ro
+ws:
         if meme_annonce(row, uniques) or meme_annonce(row, connues):
             continue
         uniques.append(row)
@@ -259,12 +262,28 @@ def save_historique(rows):
 # FILTRES
 # =========================================================
 
-def filtre_cp(df):
-    """Ne garde que les CP autorisés (si la liste est renseignée)."""
-    if not CP_AUTORISES:
-        return df
-    return df[df["cp"].astype(str).isin(CP_AUTORISES)]
+LITTORAL_FILE = "cp_bord_de_mer.csv"
 
+def filtre_cp(df):
+    """
+    Ne garde que les CP autorisés.
+    1) CP_AUTORISES si la variable est renseignée
+    2) sinon si FILTRE_LITTORAL=1 : uniquement les codes postaux
+       en bord de mer (base cp_bord_de_mer.csv, construite par
+       build_cp_bord_de_mer.py à partir de la liste officielle
+       des communes de la loi littoral).
+    """
+    autorises = set(str(c).strip() for c in CP_AUTORISES if str(c).strip())
+    if not autorises and os.getenv("FILTRE_LITTORAL", "0") == "1" and os.path.exists(LITTORAL_FILE):
+        try:
+            litt = pd.read_csv(LITTORAL_FILE, sep=";", dtype=str)
+            autorises = set(litt["code_postal"].astype(str).str.strip())
+            print(f"🌊 FILTRE LITTORAL : {len(autorises)} CP bord de mer")
+        except Exception as e:
+            print(f"⚠️ FILTRE LITTORAL impossible : {e}")
+    if not autorises:
+        return df
+    return df[df["cp"].astype(str).str.strip().isin(autorises)]
 
 def filtres_costes(df):
     """
@@ -276,7 +295,8 @@ def filtres_costes(df):
 
     def rejet(row):
         txt = (row.get("txt") or "").lower()
-        if "vendu" in txt:
+        if "vendu" i
+n txt:
             return True
         if row.get("rente") and row["rente"] > RENTE_MAX:
             return True
@@ -330,7 +350,8 @@ def _popup(row):
     if row.get("prix") is not None and not pd.isna(row.get("prix")):
         lignes.append(f"💰 Prix : {row['prix']} €<br>")
     if row.get("rente") is not None and not pd.isna(row.get("rente")):
-        lignes.append(f"📆 Rente : {row['rente']} €/mois<br>")
+        lignes.
+append(f"📆 Rente : {row['rente']} €/mois<br>")
     if row.get("bouquet") is not None and not pd.isna(row.get("bouquet")):
         lignes.append(f"💼 Bouquet : {row['bouquet']} €<br>")
     if row.get("age") is not None and not pd.isna(row.get("age")):
