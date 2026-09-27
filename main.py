@@ -5,8 +5,11 @@ main.py — orchestrateur unique.
   1. lance les 5 scrapers (un échec de site n'arrête pas les autres)
   2. dédoublonne TOUTES les annonces entre sites et avec l'historique
   3. applique les filtres métier (costes) puis le filtre CP
-  4. sauvegarde l'historique (AVANT toute géoloc, une ligne / annonce)
-  5. envoie UNE SEULE carte globale + un court résumé Telegram
+  4. sauvegarde l'historique (une ligne / annonce)
+  5. génère UNE SEULE carte globale (tuiles OSM, un point par annonce)
+  6. envoie le LIEN de la carte hébergée sur GitHub Pages
+     (la visionneuse HTML de Telegram bloque les clics : un fichier
+      joint ne permet pas d'ouvrir les annonces)
 """
 
 import asyncio
@@ -16,7 +19,7 @@ from datetime import datetime
 import pandas as pd
 
 from viager_common import (
-    send_telegram, send_file,
+    send_telegram, CARTE_URL,
     save_historique, charge_historique, deduplique,
     filtre_cp, filtres_costes, geolocate, create_global_map,
 )
@@ -78,15 +81,14 @@ async def main():
         print(f"🧹 Doublons supprimés : {len(rows) - len(uniques)}")
         print(f"🆕 Nouvelles annonces : {len(nouvelles)}")
 
-        # On historise TOUT de suite (une ligne par annonce, AVANT
-        # géoloc) pour ne jamais re-notifier, même hors zone.
+        # Historisation immédiate (une ligne par annonce)
         save_historique(nouvelles)
 
         if not nouvelles:
             send_telegram("😴 Aucune nouvelle annonce (5 sites)")
             return
 
-        # ---------- 4) FILTRE CP (villes qui t'intéressent) ----------
+        # ---------- 4) FILTRE CP ----------
         df_new = pd.DataFrame(nouvelles)
         avant = len(df_new)
         df_new = filtre_cp(df_new)
@@ -96,19 +98,23 @@ async def main():
             return
 
         # ---------- 5) CARTE GLOBALE UNIQUE ----------
-        # geolocate garantit UNE ligne (donc UN point) par annonce
         df_new = geolocate(df_new)
         create_global_map(df_new)
-        send_file("carte_globale.html")
 
-        # ---------- 6) TELEGRAM : court résumé seulement ----------
+        # ---------- 6) TELEGRAM : le LIEN de la carte ----------
         par_site = df_new["site"].value_counts().to_dict()
         detail = "\n".join(f"• {s} : {n}" for s, n in par_site.items())
-        send_telegram(
-            f"🗺️ {len(df_new)} nouvelle(s) annonce(s)\n"
-            f"{detail}\n"
-            f"Carte envoyée ci-dessus — un point par annonce."
-        )
+        if CARTE_URL:
+            send_telegram(
+                f"🗺️ <b>{len(df_new)} nouvelle(s) annonce(s)</b>\n"
+                f"{detail}\n\n"
+                f'<a href="{CARTE_URL}">Ouvrir la carte</a>'
+            )
+        else:
+            send_telegram(
+                f"🗺️ {len(df_new)} nouvelle(s) annonce(s)\n{detail}\n"
+                f"⚠️ CARTE_URL non configurée"
+            )
 
         print("✅ FIN")
 
