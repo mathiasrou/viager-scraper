@@ -29,14 +29,16 @@ CSV_CP = "base-officielle-codes-postaux.csv"
 HISTORY_FILE = "historique_global.csv"
 OUTPUT_MAP = "carte_globale.html"
 
+# URL publique de la carte (GitHub Pages). Renseignée par le workflow
+# via la variable d'environnement CARTE_URL pour rester configurable.
+CARTE_URL = os.getenv("CARTE_URL", "")
+
 # ---- FILTRES METIER (viager René Costes) ----
 RENTE_MAX = 1800
 BOUQUET_MAX = 150000
 FEMME_AGE_MIN = 90
 
 # ---- FILTRE GEOGRAPHIQUE ----
-# Liste des codes postaux autorisés. Vide => aucune restriction.
-# Configurable par la variable d'environnement CP_AUTORISES
 CP_AUTORISES = set(
     os.getenv("CP_AUTORISES", "")
     .replace(",", " ")
@@ -75,7 +77,9 @@ def send_telegram(message):
     try:
         requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            data={"chat_id": chat_id, "text": message},
+            data={"chat_id": chat_id, "text": message,
+                  "parse_mode": "HTML",
+                  "disable_web_page_preview": False},
             timeout=30,
         )
         return True
@@ -195,11 +199,6 @@ def titres_proches(a, b):
 
 
 def meme_annonce(row, autres):
-    """
-    Détecte si `row` correspond à une annonce déjà connue (liste
-    `autres`). Deux annonces sont identiques si même CP et même type,
-    avec prix proches (±5 %) et titres proches.
-    """
     na = normalise_titre(row.get("titre") or row.get("txt", ""))
     for o in autres:
         if row.get("cp") and o.get("cp") and row["cp"] != o["cp"]:
@@ -218,12 +217,6 @@ def meme_annonce(row, autres):
 
 
 def deduplique(rows, connues=None):
-    """
-    Garde les annonces non dupliquées :
-      - entre elles (inter-sites, dans le même run)
-      - par rapport aux annonces déjà vues (historique global)
-    Renvoie (nouvelles, toutes_uniques).
-    """
     connues = connues or []
     nouvelles = []
     uniques = []
@@ -249,8 +242,6 @@ def charge_historique():
         return []
     if len(df) == 0:
         return []
-    # Sécurité : une seule ligne par URL (nettoie un éventuel
-    # historique pollué par l'ancien bug de géoloc)
     df = df.drop_duplicates(subset=["url"], keep="first")
     return df.to_dict("records")
 
@@ -312,9 +303,7 @@ def filtres_costes(df):
 def geolocate(df):
     """
     Associe UNE coordonnée par annonce. La base officielle contient
-    plusieurs lignes par code postal (une par commune/lieu-dit) :
-    on garde une seule ligne par CP, sinon le merge multiplie les
-    annonces (bug des doublons x3/x4 sur Telegram et la carte).
+    plusieurs lignes par code postal : on garde une seule par CP.
     """
     df = df.copy().drop_duplicates(subset=["url"])
     if len(df) == 0:
@@ -325,7 +314,6 @@ def geolocate(df):
     geo = geo[["code_postal", "latitude", "longitude"]]
     geo.columns = ["cp", "lat", "lon"]
     geo["cp"] = geo["cp"].astype(str).str.strip()
-    # UNE seule coordonnée par code postal (première commune trouvée)
     geo = geo.drop_duplicates(subset=["cp"], keep="first")
     df["cp"] = (df["cp"].fillna("").astype(str)
                 .str.replace(".0", "", regex=False).str.strip())
@@ -364,10 +352,12 @@ def _popup_html(row):
 
 
 def create_global_map(df, output=OUTPUT_MAP):
-    """Une seule carte pour tous les sites. UN point par annonce."""
+    """Une seule carte pour tous les sites. UN point par annonce.
+    Tuiles OpenStreetMap standard : gratuites, SANS clé API
+    (les tuiles CartoDB affichent 'API KEY REQUIRED' sans clé)."""
     df = df.copy().drop_duplicates(subset=["url"])
     m = folium.Map(location=[46.5, 2.5], zoom_start=6,
-                   tiles="CartoDB positron")
+                   tiles="OpenStreetMap")
     css = """
 <style>
 .leaflet-div-icon{background:transparent!important;border:none!important;box-shadow:none!important;}
