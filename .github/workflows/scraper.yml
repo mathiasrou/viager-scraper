@@ -50,16 +50,23 @@ jobs:
           CARTE_URL: https://mathiasrou.github.io/viager-scraper/carte_globale.html
         run: timeout 30m xvfb-run python main.py
 
-      # Publie la carte sur GitHub Pages via l'API officielle :
-      # s'active automatiquement, RIEN à configurer dans Settings.
+      # Ne publier QUE la carte sur le site public
+      - name: Prepare publish folder
+        run: |
+          mkdir -p site
+          if [ -f carte_globale.html ]; then
+            cp carte_globale.html site/
+          else
+            echo "<html><body>Aucune carte générée ce run</body></html>" > site/carte_globale.html
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload map artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
-          # on ne publie que la carte (les autres fichiers restent privés au repo)
+          path: ./site
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
