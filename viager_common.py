@@ -8,7 +8,7 @@ Base commune à tous les scrapers :
 - dédoublonnage inter-sites (titre flou + CP + prix)
 - filtres métier (rente, bouquet, âge, villes autorisées)
 - géolocalisation par code postal (UNE seule coordonnée par CP)
-- carte Folium GLOBALE (une seule pour tous les sites)
+- carte Folium GLOBALE avec marqueurs standard + popups
 """
 
 import os
@@ -29,10 +29,6 @@ CSV_CP = "base-officielle-codes-postaux.csv"
 HISTORY_FILE = "historique_global.csv"
 OUTPUT_MAP = "carte_globale.html"
 
-# URL publique de la carte (GitHub Pages). Renseignée par le workflow
-# via la variable d'environnement CARTE_URL pour rester configurable.
-CARTE_URL = os.getenv("CARTE_URL", "")
-
 # ---- FILTRES METIER (viager René Costes) ----
 RENTE_MAX = 1800
 BOUQUET_MAX = 150000
@@ -45,22 +41,23 @@ CP_AUTORISES = set(
     .split()
 )
 
-# Couleurs des marqueurs par site (une couleur = un site)
+# Couleurs standard folium par site
 SITE_COLORS = {
-    "avoventes": "#e74c3c",
-    "costes": "#2980b9",
-    "encheres_immo": "#27ae60",
-    "immonotaires": "#f39c12",
-    "vench": "#8e44ad",
+    "avoventes": "red",
+    "costes": "blue",
+    "encheres_immo": "green",
+    "immonotaires": "orange",
+    "vench": "purple",
 }
 
-SYMBOLS = {
-    "Appartement": "🏢",
-    "Maison": "🏠",
-    "Villa": "🏡",
-    "Terrain": "🌳",
-    "Immeuble": "🏬",
-    "Local commercial": "🏪",
+# Icônes FontAwesome par type de bien (prefix fa)
+TYPE_ICONS = {
+    "Appartement": "building",
+    "Maison": "home",
+    "Villa": "home",
+    "Terrain": "leaf",
+    "Immeuble": "industry",
+    "Local commercial": "store",
 }
 
 
@@ -77,9 +74,7 @@ def send_telegram(message):
     try:
         requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            data={"chat_id": chat_id, "text": message,
-                  "parse_mode": "HTML",
-                  "disable_web_page_preview": False},
+            data={"chat_id": chat_id, "text": message},
             timeout=30,
         )
         return True
@@ -326,65 +321,50 @@ def geolocate(df):
 # =========================================================
 # CARTE GLOBALE UNIQUE
 # =========================================================
+# Marqueurs standard folium.Icon (comme l'ancienne carte Costes)
+# + popup construit comme dans le code d'origine.
 
-def _popup_html(row):
-    def esc(v):
-        return str(v or "").replace("<", "&lt;").replace(">", "&gt;")
-    lignes = [f"<b>{esc(row.get('site'))} — {esc(row.get('type'))}</b><br><br>"]
-    if row.get("prix"):
-        lignes.append(f"💰 {esc(row['prix'])} €<br>")
-    if row.get("rente"):
-        lignes.append(f"📆 Rente : {esc(row['rente'])} €/mois<br>")
-    if row.get("bouquet"):
-        lignes.append(f"💼 Bouquet : {esc(row['bouquet'])} €<br>")
-    if row.get("age"):
-        lignes.append(f"👴 {esc(row['age'])} ans<br>")
-    if row.get("surface"):
-        lignes.append(f"📐 {esc(row['surface'])} m²<br>")
+def _popup(row):
+    """Popup exactement dans le style du code d'origine."""
+    lignes = [f"<b>{row.get('site')} — {row.get('type')}</b><br><br>"]
+    if row.get("prix") is not None and not pd.isna(row.get("prix")):
+        lignes.append(f"💰 Prix : {row['prix']} €<br>")
+    if row.get("rente") is not None and not pd.isna(row.get("rente")):
+        lignes.append(f"📆 Rente : {row['rente']} €/mois<br>")
+    if row.get("bouquet") is not None and not pd.isna(row.get("bouquet")):
+        lignes.append(f"💼 Bouquet : {row['bouquet']} €<br>")
+    if row.get("age") is not None and not pd.isna(row.get("age")):
+        lignes.append(f"👴 Age : {row['age']} ans<br>")
+    if row.get("surface") is not None and not pd.isna(row.get("surface")):
+        lignes.append(f"📐 Surface : {row['surface']} m²<br>")
     if row.get("date_vente"):
-        lignes.append(f"📅 {esc(row['date_vente'])}<br>")
+        lignes.append(f"📅 Vente : {row['date_vente']}<br>")
     if row.get("cp"):
-        lignes.append(f"📍 {esc(row['cp'])}<br><br>")
-    lignes.append(f"📝 {esc(row.get('titre'))}<br><br>")
-    url = str(row.get("url") or "")
-    lignes.append(f'<a href="{url}" target="_blank">Voir l\'annonce</a>')
+        lignes.append(f"📍 CP : {row['cp']}<br><br>")
+    if row.get("titre"):
+        lignes.append(f"📝 {row['titre']}<br><br>")
+    lignes.append(f'<a href="{row["url"]}" target="_blank">Voir annonce</a>')
     return "".join(lignes)
 
 
 def create_global_map(df, output=OUTPUT_MAP):
     """Une seule carte pour tous les sites. UN point par annonce.
-    Tuiles OpenStreetMap standard : gratuites, SANS clé API
-    (les tuiles CartoDB affichent 'API KEY REQUIRED' sans clé)."""
+    Marqueurs folium.Icon standard : l'encart popup au clic
+    fonctionne partout, comme dans l'ancien code."""
     df = df.copy().drop_duplicates(subset=["url"])
     m = folium.Map(location=[46.5, 2.5], zoom_start=6,
                    tiles="OpenStreetMap")
-    css = """
-<style>
-.leaflet-div-icon{background:transparent!important;border:none!important;box-shadow:none!important;}
-.my-div-icon{background:transparent!important;border:none!important;}
-</style>
-"""
-    m.get_root().html.add_child(folium.Element(css))
 
     for _, row in df.iterrows():
         try:
             if pd.isna(row.get("lat")):
                 continue
-            color = SITE_COLORS.get(row.get("site"), "#666666")
-            symbol = SYMBOLS.get(row.get("type"), "€")
-            prix = row.get("prix")
-            if prix is not None and prix >= 400000:
-                symbol = f"{int(prix // 100000)}€"
-            html = f"""
-<div style="width:42px;display:flex;flex-direction:column;align-items:center;background:transparent;">
-  <div style="background:{color};width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:14px;border:2px solid white;box-shadow:0 0 4px rgba(0,0,0,0.4);">{symbol}</div>
-</div>
-"""
+            color = SITE_COLORS.get(row.get("site"), "gray")
+            icon_name = TYPE_ICONS.get(row.get("type"), "home")
             folium.Marker(
-                location=[row["lat"], row["lon"]],
-                popup=folium.Popup(_popup_html(row), max_width=350),
-                icon=DivIcon(html=html, class_name="my-div-icon",
-                             icon_size=(42, 42), icon_anchor=(21, 21)),
+                [row["lat"], row["lon"]],
+                popup=folium.Popup(_popup(row), max_width=300),
+                icon=folium.Icon(color=color, icon=icon_name, prefix="fa"),
             ).add_to(m)
         except Exception as e:
             print(f"❌ MARKER : {e}")
