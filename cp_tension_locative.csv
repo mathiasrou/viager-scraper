@@ -6,6 +6,7 @@
 13540;Aix-en-Provence
 49000;Angers
 49100;Angers
+64600;Anglet
 74000;Annecy
 74370;Annecy
 74600;Annecy
@@ -15,25 +16,56 @@
 06160;Antibes
 06600;Antibes
 33120;Arcachon
+17590;Ars-en-Ré
+83150;Bandol
 64100;Bayonne
+64200;Biarritz
 33000;Bordeaux
 33100;Bordeaux
 33200;Bordeaux
 33300;Bordeaux
 33800;Bordeaux
+92100;Boulogne-Billancourt
 14000;Caen
+06150;Cannes
+06400;Cannes
+56340;Carnac
+13260;Cassis
+66190;Collioure
+14800;Deauville
+35800;Dinard
+83370;Fréjus
+83600;Fréjus
 38000;Grenoble
 38100;Grenoble
+64210;Guéthary
+64700;Hendaye
+14600;Honfleur
+83400;Hyères
+44500;La Baule-Escoublac
+17670;La Couarde-sur-Mer
+17630;La Flotte
 17000;La Rochelle
 70120;La Rochelle
+33115;La Teste-de-Buch
+33260;La Teste-de-Buch
+44490;Le Croisic
 76600;Le Havre
 76610;Le Havre
 76620;Le Havre
+62520;Le Touquet-Paris-Plage
+17880;Les Portes-en-Ré
+85100;Les Sables-d'Olonne
+85180;Les Sables-d'Olonne
+85340;Les Sables-d'Olonne
 59000;Lille
 59160;Lille
 59260;Lille
 59777;Lille
 59800;Lille
+17111;Loix
+33950;Lège-Cap-Ferret
+33970;Lège-Cap-Ferret
 06500;Menton
 34000;Montpellier
 34070;Montpellier
@@ -43,16 +75,24 @@
 44100;Nantes
 44200;Nantes
 44300;Nantes
+92200;Neuilly-sur-Seine
 06000;Nice
 06100;Nice
 06200;Nice
 06300;Nice
+44210;Pornic
+56170;Quiberon
 35000;Rennes
 35200;Rennes
 35700;Rennes
+17940;Rivedoux-Plage
+17200;Royan
+83110;Sanary-sur-Mer
+83140;Six-Fours-les-Plages
 67000;Strasbourg
 67100;Strasbourg
 67200;Strasbourg
+34200;Sète
 74200;Thonon-les-Bains
 31000;Toulouse
 31100;Toulouse
@@ -60,4 +100,6 @@
 31300;Toulouse
 31400;Toulouse
 31500;Toulouse
+56000;Vannes
 69100;Villeurbanne
+94300;Vincennes
