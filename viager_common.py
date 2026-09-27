@@ -7,7 +7,7 @@ Base commune à tous les scrapers :
 - historique global UNIQUE (historique_global.csv)
 - dédoublonnage inter-sites (titre flou + CP + prix)
 - filtres métier (rente, bouquet, âge, villes autorisées)
-- géolocalisation par code postal
+- géolocalisation par code postal (UNE seule coordonnée par CP)
 - carte Folium GLOBALE (une seule pour tous les sites)
 """
 
@@ -36,8 +36,7 @@ FEMME_AGE_MIN = 90
 
 # ---- FILTRE GEOGRAPHIQUE ----
 # Liste des codes postaux autorisés. Vide => aucune restriction.
-# Configurable aussi par la variable d'environnement CP_AUTORISES
-#   (ex: CP_AUTORISES="75001,75002 33000" dans le workflow GitHub)
+# Configurable par la variable d'environnement CP_AUTORISES
 CP_AUTORISES = set(
     os.getenv("CP_AUTORISES", "")
     .replace(",", " ")
@@ -83,41 +82,6 @@ def send_telegram(message):
     except Exception as e:
         print(f"❌ TELEGRAM : {e}")
         return False
-
-
-def send_telegram_long(rows, header=""):
-    """
-    Envoie les nouvelles annonces en respectant la limite de 4096
-    caractères par message, AVEC le lien réel de chaque annonce.
-    La liste passée en argument est déjà dédoublonnée globalement.
-    """
-    lines = []
-    for r in rows:
-        ligne = (
-            f"🏷️ {r.get('site')}\n"
-            f"{r.get('type') or ''} — {r.get('titre') or ''}\n"
-        )
-        if r.get("prix"):
-            ligne += f"💰 {r['prix']} €\n"
-        if r.get("rente"):
-            ligne += f"📆 Rente : {r['rente']} €/mois\n"
-        if r.get("bouquet"):
-            ligne += f"💼 Bouquet : {r['bouquet']} €\n"
-        if r.get("date_vente"):
-            ligne += f"📅 {r['date_vente']}\n"
-        if r.get("cp"):
-            ligne += f"📍 {r['cp']}\n"
-        ligne += f"🔗 {r['url']}\n"
-        lines.append(ligne)
-
-    bloc = header
-    for ligne in lines:
-        if len(bloc) + len(ligne) > 3500:
-            send_telegram(bloc)
-            bloc = ""
-        bloc += "\n" + ligne
-    if bloc.strip():
-        send_telegram(bloc)
 
 
 def send_file(path):
@@ -233,9 +197,8 @@ def titres_proches(a, b):
 def meme_annonce(row, autres):
     """
     Détecte si `row` correspond à une annonce déjà connue (liste
-    `autres` de rows). Deux annonces sont identiques si :
-      - même CP et même type, ET prix proches (±5 %), ET titres proches
-    C'est ce qui supprime les doublons entre sites ET entre runs.
+    `autres`). Deux annonces sont identiques si même CP et même type,
+    avec prix proches (±5 %) et titres proches.
     """
     na = normalise_titre(row.get("titre") or row.get("txt", ""))
     for o in autres:
@@ -286,6 +249,9 @@ def charge_historique():
         return []
     if len(df) == 0:
         return []
+    # Sécurité : une seule ligne par URL (nettoie un éventuel
+    # historique pollué par l'ancien bug de géoloc)
+    df = df.drop_duplicates(subset=["url"], keep="first")
     return df.to_dict("records")
 
 
@@ -344,8 +310,14 @@ def filtres_costes(df):
 # =========================================================
 
 def geolocate(df):
+    """
+    Associe UNE coordonnée par annonce. La base officielle contient
+    plusieurs lignes par code postal (une par commune/lieu-dit) :
+    on garde une seule ligne par CP, sinon le merge multiplie les
+    annonces (bug des doublons x3/x4 sur Telegram et la carte).
+    """
+    df = df.copy().drop_duplicates(subset=["url"])
     if len(df) == 0:
-        df = df.copy()
         df["lat"] = pd.NA
         df["lon"] = pd.NA
         return df
@@ -353,11 +325,13 @@ def geolocate(df):
     geo = geo[["code_postal", "latitude", "longitude"]]
     geo.columns = ["cp", "lat", "lon"]
     geo["cp"] = geo["cp"].astype(str).str.strip()
-    df = df.copy()
+    # UNE seule coordonnée par code postal (première commune trouvée)
+    geo = geo.drop_duplicates(subset=["cp"], keep="first")
     df["cp"] = (df["cp"].fillna("").astype(str)
                 .str.replace(".0", "", regex=False).str.strip())
     df = df.merge(geo, on="cp", how="left")
-    print(f"📍 GEOLOCALISATION : {df['lat'].notna().sum()} annonces")
+    print(f"📍 GEOLOCALISATION : {len(df)} annonces "
+          f"({df['lat'].notna().sum()} géolocalisées)")
     return df
 
 
@@ -390,7 +364,8 @@ def _popup_html(row):
 
 
 def create_global_map(df, output=OUTPUT_MAP):
-    """Une seule carte pour tous les sites. Couleur = site, emoji = type."""
+    """Une seule carte pour tous les sites. UN point par annonce."""
+    df = df.copy().drop_duplicates(subset=["url"])
     m = folium.Map(location=[46.5, 2.5], zoom_start=6,
                    tiles="CartoDB positron")
     css = """
@@ -425,4 +400,5 @@ def create_global_map(df, output=OUTPUT_MAP):
             print(f"❌ MARKER : {e}")
 
     m.save(output)
-    print(f"✅ CARTE GLOBALE SAUVEGARDEE : {output}")
+    print(f"✅ CARTE GLOBALE SAUVEGARDEE : {output} "
+          f"({len(df[df['lat'].notna()])} points)")
