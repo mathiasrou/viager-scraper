@@ -1,4 +1,3 @@
-# Relancé manuellement le 27/09/2026
 name: scraper
 
 on:
@@ -12,23 +11,21 @@ on:
       - 'scrapers.py'
       - 'viager_common.py'
       - 'requirements.txt'
-      - '.github/workflows/scraper.yml'
 
 permissions:
   contents: write
   pages: write
   id-token: write
 
+# Un seul run à la fois : les runs en attente sont annulés,
+# donc plus jamais 5 messages Telegram d'un coup.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: scraper-run
+  cancel-in-progress: true
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: https://mathiasrou.github.io/viager-scraper/carte_globale.html
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,7 +48,6 @@ jobs:
           CARTE_URL: https://mathiasrou.github.io/viager-scraper/carte_globale.html
         run: timeout 30m xvfb-run python main.py
 
-      # Ne publier QUE la carte sur le site public
       - name: Prepare publish folder
         run: |
           mkdir -p site
@@ -61,8 +57,12 @@ jobs:
             echo "<html><body>Aucune carte générée ce run</body></html>" > site/carte_globale.html
           fi
 
-      - name: Setup Pages
+      # enablement: true => ACTIVE GitHub Pages automatiquement,
+      # aucune manipulation dans Settings > Pages nécessaire.
+      - name: Setup Pages (avec activation auto)
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload map artifact
         uses: actions/upload-pages-artifact@v3
