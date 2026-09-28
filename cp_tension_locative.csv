@@ -4,6 +4,7 @@
 13100;Aix-en-Provence
 13290;Aix-en-Provence
 13540;Aix-en-Provence
+37400;Amboise
 49000;Angers
 49100;Angers
 64600;Anglet
@@ -17,6 +18,8 @@
 06600;Antibes
 33120;Arcachon
 17590;Ars-en-Ré
+84000;Avignon
+84140;Avignon
 83150;Bandol
 64100;Bayonne
 64200;Biarritz
@@ -31,9 +34,15 @@
 06400;Cannes
 56340;Carnac
 13260;Cassis
+73000;Chambéry
+94220;Charenton-le-Pont
+28000;Chartres
 66190;Collioure
+68000;Colmar
 14800;Deauville
+21000;Dijon
 35800;Dinard
+77300;Fontainebleau
 83370;Fréjus
 83600;Fréjus
 38000;Grenoble
@@ -67,6 +76,9 @@
 33950;Lège-Cap-Ferret
 33970;Lège-Cap-Ferret
 06500;Menton
+57000;Metz
+57050;Metz
+57070;Metz
 34000;Montpellier
 34070;Montpellier
 34080;Montpellier
@@ -80,8 +92,12 @@
 06100;Nice
 06200;Nice
 06300;Nice
+45000;Orléans
+45100;Orléans
+86000;Poitiers
 44210;Pornic
 56170;Quiberon
+51100;Reims
 35000;Rennes
 35200;Rennes
 35700;Rennes
@@ -100,6 +116,10 @@
 31300;Toulouse
 31400;Toulouse
 31500;Toulouse
+37000;Tours
+37100;Tours
+37200;Tours
 56000;Vannes
+78000;Versailles
 69100;Villeurbanne
 94300;Vincennes
