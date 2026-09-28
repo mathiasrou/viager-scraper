@@ -61,6 +61,10 @@ TYPE_ICONS = {
     "Local commercial": "store",
 }
 
+# Sites de vente aux enchères : le prix bouge chaque jour
+# (surenchères), on ne l'utilise donc PAS pour comparer.
+SITES_ENCHERES = {"vench", "encheres_immo"}
+
 
 # =========================================================
 # TELEGRAM
@@ -188,6 +192,22 @@ def normalise_titre(txt):
     return " ".join(mots)
 
 
+def url_slug(u):
+    """
+    Slug d'URL insensible au numéro de vente.
+    vench change le numéro de vente (vente-166548-...) à chaque
+    re-mise en ligne : on le retire pour reconnaître le même bien.
+    """
+    u = str(u or "")
+    m = re.search(r"vente-\d+-(.+?)\.html", u)
+    if m:
+        return "vench:" + m.group(1)
+    m = re.search(r"/(?:lot|bien|annonce)[-_]?\d+(?:[-_](.+))?\.html", u)
+    if m:
+        return "ench:" + (m.group(1) or "")
+    return None
+
+
 def titres_proches(a, b):
     if not a or not b:
         return False
@@ -196,17 +216,27 @@ def titres_proches(a, b):
 
 def meme_annonce(row, autres):
     na = normalise_titre(row.get("titre") or row.get("txt", ""))
+    su = url_slug(row.get("url"))
     for o in autres:
+        # 1) Même slug d'URL (vench re-liste avec un nouveau numéro)
+        so = url_slug(o.get("url"))
+        if su and su == so:
+            return True
         if row.get("cp") and o.get("cp") and row["cp"] != o["cp"]:
             continue
         if row.get("type") != o.get("type"):
             continue
         no = normalise_titre(o.get("titre") or o.get("txt", ""))
         pa, pb = row.get("prix"), o.get("prix")
-        prix_ok = (
-            pa is None or pb is None
-            or abs(pa - pb) <= max(300, 0.05 * max(pa, pb))
-        )
+        # 2) Sur les sites d'enchères le prix monte chaque jour :
+        #    on ne le compare pas, titre + CP + type suffisent.
+        if row.get("site") in SITES_ENCHERES or o.get("site") in SITES_ENCHERES:
+            prix_ok = True
+        else:
+            prix_ok = (
+                pa is None or pb is None
+                or abs(pa - pb) <= max(300, 0.05 * max(pa, pb))
+            )
         if prix_ok and (titres_proches(na, no) or (na and na == no)):
             return True
     return False
