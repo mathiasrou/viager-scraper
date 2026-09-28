@@ -38,6 +38,11 @@ VILLES = [
     "Annecy", "Annemasse", "Thonon-les-Bains", "Aix-en-Provence",
     "Angers", "Caen", "La Rochelle", "Bayonne", "Anglet", "Biarritz",
     "Arcachon", "La Teste-de-Buch", "Lège-Cap-Ferret", "Le Havre",
+    # --- Villes agréables de l'intérieur, forte demande locative ---
+    "Tours", "Amboise", "Versailles", "Charenton-le-Pont",
+    "Saint-Germain-en-Laye", "Fontainebleau", "Chartres",
+    "Poitiers", "Orléans", "Dijon", "Metz", "Avignon",
+    "Colmar", "Chambéry", "Reims",
     # --- Littoral attractif à forte demande (Manche/Atlantique) ---
     "Deauville", "Honfleur", "Le Touquet-Paris-Plage", "Dinard",
     "Saint-Malo", "Vannes", "Quiberon", "Carnac",
