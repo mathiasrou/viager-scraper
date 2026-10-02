@@ -15,6 +15,7 @@ Base commune à tous les scrapers :
 import os
 import re
 import unicodedata
+from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 
 import pandas as pd
@@ -171,6 +172,9 @@ def cp_norm(x):
     s = str(x).strip()
     if s.endswith(".0"):
         s = s[:-2]
+    # CP sur 5 chiffres : 6000 (pandas int) -> "06000" (0 initial perdu).
+    if s.isdigit():
+        s = s.zfill(5)
     return s
 
 # =========================================================
@@ -275,15 +279,50 @@ def charge_historique():
     rows = df.to_dict("records")
     # Normalise le CP (pandas le convertit en numérique) pour que
     # la comparaison avec les nouvelles annonces (chaînes) marche.
+    # Migration unique : les anciennes lignes n'ont pas de date_ajout,
+    # on les date du jour (elles apparaîtront une fois sur la carte
+    # puis sortiront de la fenêtre de 7 jours).
+    auj = datetime.now().strftime("%d/%m/%Y")
     for r in rows:
         r["cp"] = cp_norm(r.get("cp"))
+        d = r.get("date_ajout")
+        if d is None or (not isinstance(d, str) and pd.isna(d)) or str(d).strip() == "":
+            r["date_ajout"] = auj
     return rows
+
+def historique_recent(jours=7):
+    """
+    Annonces de l'historique ajoutées il y a moins de `jours` jours
+    (colonne date_ajout). Sert à re-générer une carte visible même si
+    une annonce a déjà été signalée la veille.
+    """
+    rows = charge_historique()
+    limite = datetime.now() - timedelta(days=jours)
+    garde = []
+    for r in rows:
+        d = r.get("date_ajout")
+        if d is None or (not isinstance(d, str) and pd.isna(d)):
+            continue
+        try:
+            if datetime.strptime(str(d).strip(), "%d/%m/%Y") >= limite:
+                garde.append(r)
+        except ValueError:
+            continue
+    print(f"📅 HISTORIQUE RÉCENT : {len(garde)} annonces sur {jours} jours")
+    return garde
+
 
 def save_historique(rows):
     """Ajoute les nouvelles annonces à l'historique global unique."""
     anciennes = charge_historique()
+    auj = datetime.now().strftime("%d/%m/%Y")
     cols = ["site", "url", "titre", "type", "prix", "rente", "bouquet",
-            "age", "cp", "date_vente", "surface", "pieces", "status"]
+            "age", "cp", "date_vente", "surface", "pieces", "status",
+            "date_ajout"]
+    rows = [dict(r) for r in (rows or [])]
+    for r in rows:
+        if not r.get("date_ajout"):
+            r["date_ajout"] = auj
     df_old = pd.DataFrame(anciennes, columns=cols)
     df_new = pd.DataFrame(rows, columns=cols)
     combined = pd.concat([df_old, df_new], ignore_index=True)
@@ -326,6 +365,7 @@ def filtre_cp(df):
             print(f"⚠️ FILTRE TENSION impossible : {e}")
     if not autorises:
         return df
+    autorises = set(cp_norm(c).zfill(5) for c in autorises)
     df = df.copy()
     df["cp"] = df["cp"].map(cp_norm)
     return df[df["cp"].isin(autorises)]
@@ -361,11 +401,12 @@ def geolocate(df):
     """
     Associe UNE coordonnée par annonce (une seule ligne par CP).
     """
-    df = df.copy().drop_duplicates(subset=["url"])
-    if len(df) == 0:
+    df = df.copy()
+    if len(df) == 0 or "url" not in df.columns:
         df["lat"] = pd.NA
         df["lon"] = pd.NA
         return df
+    df = df.drop_duplicates(subset=["url"])
     # dtype=str INDISPENSABLE : sinon pandas lit "06000" en entier 6000
     # et aucun CP commençant par 0 ne matche (Nice, Ain, etc.) -> carte vide.
     geo = pd.read_csv(CSV_CP, dtype={"code_postal": str})
@@ -409,7 +450,12 @@ def _popup(row):
 
 def create_global_map(df, output=OUTPUT_MAP):
     """Une seule carte pour tous les sites. UN point par annonce."""
-    df = df.copy().drop_duplicates(subset=["url"])
+    df = df.copy()
+    if len(df) == 0 or "url" not in df.columns:
+        df["lat"] = pd.NA
+        df["lon"] = pd.NA
+    else:
+        df = df.drop_duplicates(subset=["url"])
     m = folium.Map(location=[46.5, 2.5], zoom_start=6,
                    tiles="OpenStreetMap")
 
@@ -428,5 +474,6 @@ def create_global_map(df, output=OUTPUT_MAP):
             print(f"❌ MARKER : {e}")
 
     m.save(output)
+    nb_points = int(df["lat"].notna().sum()) if "lat" in df.columns else 0
     print(f"✅ CARTE GLOBALE SAUVEGARDEE : {output} "
-          f"({len(df[df['lat'].notna()])} points)")
+          f"({nb_points} points)")
