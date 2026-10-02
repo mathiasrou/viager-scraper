@@ -49,14 +49,15 @@ def _to_int(s):
 
 def prix_euros(txt):
     """
-    Extraction de prix robuste : gère "36 000 €", "36.000 €",
-    "36 000,00 €", "36 000 EUR", avec libellés "Mise à prix",
-    "Prix de départ", "Prix initial", "Valeur estimée".
+    Extraction de prix robuste : "36 000 €", "36.000 €", "36 000,00 €",
+    "36 000 EUR", avec libellés "Mise à prix", "Prix de départ",
+    "Prix initial", "Valeur estimée".
     """
     if not txt:
         return None
     labellise = re.compile(
-        r"(?:mise\s*[aà]\s*prix|prix\s*de\s*d[eé]part|prix\s*initial"|valeur\s*estim[eé]e|prix\s*de\s*r[eé]servation|prix)"
+        r"(?:mise\s*[aà]\s*prix|prix\s*de\s*d[eé]part|prix\s*initial"
+        r"|valeur\s*estim[eé]e|prix\s*de\s*r[eé]servation|prix)"
         r"[^\d]{0,20}([\d][\d\s.,\u202f\xa0]{2,})\s*(?:€|EUR|euros?)",
         re.I,
     )
