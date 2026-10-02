@@ -5,9 +5,6 @@ Un scraper par site. Chaque fonction renvoie une LISTE de dictionnaires
 au schéma commun :
   site, url, titre, type, prix, rente, bouquet, age, cp,
   date_vente, surface, pieces, status, txt
-
-Le nettoyage / dédoublonnage / carte / Telegram est géré dans
-viager_common.py et orchestré par main.py.
 """
 
 import re
@@ -39,25 +36,34 @@ def _row(site, **kwargs):
     return row
 
 
+def _to_int(s):
+    """"36 000" / "36.000" / "36 000,00" -> 36000."""
+    s = re.sub(r"[\s\u202f\xa0]", "", str(s))
+    m = re.match(r"^(\d+)[.,]\d{1,2}$", s)
+    if m:
+        s = m.group(1)
+    else:
+        s = re.sub(r"[.,](?=\d{3}\b)", "", s)
+    return int(s) if s.isdigit() else None
+
+
 def prix_euros(txt):
     """
     Extraction de prix robuste : gère "36 000 €", "36.000 €",
     "36 000,00 €", "36 000 EUR", avec libellés "Mise à prix",
-    "Prix de départ", "Prix initial", "Valeur".
+    "Prix de départ", "Prix initial", "Valeur estimée".
     """
     if not txt:
         return None
-    motifs = [
-        r"(?:mise\s*[aà]\s*prix|prix\s*de\s*d[eé]part|prix\s*initial|
-valeur\s*estim[eé]e|prix\s*de\s*r[eé]servation|prix)
+    labellise = re.compile(
+        r"(?:mise\s*[aà]\s*prix|prix\s*de\s*d[eé]part|prix\s*initial"|valeur\s*estim[eé]e|prix\s*de\s*r[eé]servation|prix)"
         r"[^\d]{0,20}([\d][\d\s.,\u202f\xa0]{2,})\s*(?:€|EUR|euros?)",
-    ]
-    # 1) montant précédé d'un libellé
-    for m in re.finditer(motifs[0] + motifs[1], txt, re.I):
+        re.I,
+    )
+    for m in labellise.finditer(txt):
         v = _to_int(m.group(1))
         if v and 100 <= v <= 100_000_000:
             return v
-    # 2) n'importe quel montant suivi de €/EUR
     vals = []
     for m in re.finditer(r"([\d][\d\s.,\u202f\xa0]{2,})\s*(?:€|EUR|euros?)", txt, re.I):
         v = _to_int(m.group(1))
@@ -66,25 +72,12 @@ valeur\s*estim[eé]e|prix\s*de\s*r[eé]servation|prix)
     return min(vals) if vals else None
 
 
-def _to_int(s):
-    """"36 000" / "36.000" / "36 000,00" -> 36000."""
-    s = re.sub(r"[\s\u202f\xa0]", "", str(s))
-    # séparateur décimal : on coupe la partie décimale
-    m = re.match(r"^(\d+)[.,](\d{1,2})$", s)
-    if m:
-        s = m.group(1)
-    else:
-        # séparateur de milliers : points ou virgules entre groupes
-        s = re.sub(r"[.,](?=\d{3}\b)", "", s)
-    return int(s) if s.isdigit() else None
-
-
 # =========================================================
 # 1) AVOVENTES
 # =========================================================
-# Fix : on ne retient que les liens du domaine avoventes.fr.
-# Avant, l'ancre de la bannière cookies (cookiebot.com) remontait
-# dans un ancêtre contenant aussi les cartes => mauvais "Voir annonce".
+# Fix : seuls les liens du domaine avoventes.fr sont retenus
+# (avant, le lien de la bannière cookies cookiebot.com était
+# associé aux annonces => mauvais "Voir annonce").
 
 async def scrape_avoventes():
     BASE_URL = "https://avoventes.fr/recherche/toutes"
@@ -100,15 +93,12 @@ async def scrape_avoventes():
         )
         await page.goto(BASE_URL, wait_until="networkidle", timeout=120000)
 
-        # cookies
         try:
-            await page.locator("button:has-text('Tout accepter')") \
-                .click(timeout=5000)
+            await page.locator("button:has-text('Tout accepter')").click(timeout=5000)
             await page.wait_for_timeout(3000)
         except Exception:
             pass
 
-        # Chaque lien du SITE, associé à la carte contenant "Mise à prix"
         cards = await page.evaluate(
             """
             () => {
@@ -117,7 +107,7 @@ async def scrape_avoventes():
               for (const a of document.querySelectorAll('a[href]')) {
                 try {
                   const u = new URL(a.href);
-                  if (!/avoventes\.fr$/.test(u.hostname)) continue;
+                  if (!/avoventes\\.fr$/.test(u.hostname)) continue;
                   if (bad.test(a.href)) continue;
                 } catch (e) { continue; }
                 let c = a.closest('article, li, div');
@@ -160,8 +150,8 @@ async def scrape_avoventes():
 
                 date_vente = None
                 m = re.search(
-                    r"Date de la vente\s*:\s*(.+?)"
-                    r"(?:Date des visites|$)", txt, re.S | re.I)
+                    r"Date de la vente\s*:\s*(.+?)(?:Date des visites|$)",
+                    txt, re.S | re.I)
                 if m:
                     d = re.search(r"(\d{2})\s+(\w+)\s+(\d{4})",
                                   clean(m.group(1)), re.I)
@@ -240,7 +230,6 @@ async def scrape_costes(max_annonces=100):
                     seen.add(url)
 
                     txt = clean(await card.inner_text())
-
                     ages = [int(x) for x in
                             re.findall(r"(\d{2})\s*ans", txt, re.I)]
 
@@ -296,7 +285,6 @@ async def scrape_encheres_immo():
         await page.goto(BASE_URL, timeout=60000)
         await page.wait_for_timeout(5000)
 
-        page_num = 1
         while True:
             articles = await page.query_selector_all("article")
             if not articles:
@@ -319,8 +307,9 @@ async def scrape_encheres_immo():
                         continue
                     seen.add(url)
 
-                    m = re.search(r"(Débute|Termine)\s+le\s+(\d{2}/\d{2}/\d{4})",
-                                  txt, re.I)
+                    m = re.search(
+                        r"(Débute|Termine)\s+le\s+(\d{2}/\d{2}/\d{4})",
+                        txt, re.I)
                     date_vente = m.group(2) if m else None
 
                     t = txt.lower()
@@ -355,7 +344,6 @@ async def scrape_encheres_immo():
                 await page.wait_for_timeout(5000)
             except Exception:
                 break
-            page_num += 1
 
         await browser.close()
 
@@ -506,7 +494,6 @@ async def scrape_vench(max_pages=5):
                         ages = [int(x) for x in
                                 re.findall(r"(\d{2})\s*ans", full, re.I)]
 
-                        # Prix d'entrée : extracteur robuste dédié
                         prix = prix_euros(full) or extract_price(full)
 
                         rows.append(_row(
