@@ -5,7 +5,7 @@ Base commune à tous les scrapers :
 - envoi Telegram (message + fichier)
 - nettoyage / extraction (prix, CP, type, titre)
 - historique global UNIQUE (historique_global.csv)
-- dédoublonnage inter-sites (titre flou + CP + prix)
+- dédoublonnage inter-sites (titre flou + CP + prix + slug URL)
 - filtres métier (rente, bouquet, âge, villes autorisées)
 - filtres géographiques (bord de mer / tension locative)
 - géolocalisation par code postal (UNE seule coordonnée par CP)
@@ -20,7 +20,7 @@ from difflib import SequenceMatcher
 import pandas as pd
 import requests
 import folium
-from folium.features import DivIcon
+
 
 # =========================================================
 # CONFIG
@@ -30,19 +30,16 @@ CSV_CP = "base-officielle-codes-postaux.csv"
 HISTORY_FILE = "historique_global.csv"
 OUTPUT_MAP = "carte_globale.html"
 
-# ---- FILTRES METIER (viager René Costes) ----
 RENTE_MAX = 1800
 BOUQUET_MAX = 150000
 FEMME_AGE_MIN = 90
 
-# ---- FILTRE GEOGRAPHIQUE ----
 CP_AUTORISES = set(
     os.getenv("CP_AUTORISES", "")
     .replace(",", " ")
     .split()
 )
 
-# Couleurs standard folium par site
 SITE_COLORS = {
     "avoventes": "red",
     "costes": "blue",
@@ -51,7 +48,6 @@ SITE_COLORS = {
     "vench": "purple",
 }
 
-# Icônes FontAwesome par type de bien (prefix fa)
 TYPE_ICONS = {
     "Appartement": "building",
     "Maison": "home",
@@ -170,6 +166,21 @@ def extract_surface(txt):
         return None
 
 
+def cp_norm(x):
+    """
+    CP normalisé en chaîne : " 33140", 33140, "33140.0" -> "33140".
+    INDISPENSABLE : pandas lit l'historique en numérique (int/float)
+    alors que les nouvelles annonces ont des chaînes. Sans cette
+    normalisation, aucun doublon historique n'était reconnu.
+    """
+    if x is None:
+        return ""
+    s = str(x).strip()
+    if s.endswith(".0"):
+        s = s[:-2]
+    return s
+
+
 # =========================================================
 # NORMALISATION DE TITRE + DEDOUBLONNAGE
 # =========================================================
@@ -195,16 +206,13 @@ def normalise_titre(txt):
 def url_slug(u):
     """
     Slug d'URL insensible au numéro de vente.
-    vench change le numéro de vente (vente-166548-...) à chaque
-    re-mise en ligne : on le retire pour reconnaître le même bien.
+    vench change le numéro (vente-166548-...) à chaque re-listage :
+    on le retire pour reconnaître le même bien.
     """
     u = str(u or "")
     m = re.search(r"vente-\d+-(.+?)\.html", u)
     if m:
         return "vench:" + m.group(1)
-    m = re.search(r"/(?:lot|bien|annonce)[-_]?\d+(?:[-_](.+))?\.html", u)
-    if m:
-        return "ench:" + (m.group(1) or "")
     return None
 
 
@@ -217,26 +225,34 @@ def titres_proches(a, b):
 def meme_annonce(row, autres):
     na = normalise_titre(row.get("titre") or row.get("txt", ""))
     su = url_slug(row.get("url"))
+    # Même URL exacte -> même annonce, point final.
+    ru = row.get("url")
     for o in autres:
-        # 1) Même slug d'URL (vench re-liste avec un nouveau numéro)
+        if ru and ru == o.get("url"):
+            return True
+        # Même slug vench (re-listage avec nouveau numéro)
         so = url_slug(o.get("url"))
         if su and su == so:
             return True
-        if row.get("cp") and o.get("cp") and row["cp"] != o["cp"]:
+        # CP normalisés des deux côtés (chaîne vs numérique)
+        cp_a, cp_b = cp_norm(row.get("cp")), cp_norm(o.get("cp"))
+        if cp_a and cp_b and cp_a != cp_b:
             continue
         if row.get("type") != o.get("type"):
             continue
         no = normalise_titre(o.get("titre") or o.get("txt", ""))
         pa, pb = row.get("prix"), o.get("prix")
-        # 2) Sur les sites d'enchères le prix monte chaque jour :
-        #    on ne le compare pas, titre + CP + type suffisent.
         if row.get("site") in SITES_ENCHERES or o.get("site") in SITES_ENCHERES:
             prix_ok = True
         else:
-            prix_ok = (
-                pa is None or pb is None
-                or abs(pa - pb) <= max(300, 0.05 * max(pa, pb))
-            )
+            try:
+                prix_ok = (
+                    pa is None or pb is None
+                    or abs(float(pa) - float(pb))
+                    <= max(300, 0.05 * max(float(pa), float(pb)))
+                )
+            except (TypeError, ValueError):
+                prix_ok = True
         if prix_ok and (titres_proches(na, no) or (na and na == no)):
             return True
     return False
@@ -269,7 +285,12 @@ def charge_historique():
     if len(df) == 0:
         return []
     df = df.drop_duplicates(subset=["url"], keep="first")
-    return df.to_dict("records")
+    rows = df.to_dict("records")
+    # Normalise le CP (pandas le convertit en numérique) pour que
+    # la comparaison avec les nouvelles annonces (chaînes) marche.
+    for r in rows:
+        r["cp"] = cp_norm(r.get("cp"))
+    return rows
 
 
 def save_historique(rows):
@@ -298,10 +319,9 @@ def filtre_cp(df):
     """
     Ne garde que les CP autorisés.
     1) CP_AUTORISES si la variable est renseignée
-    2) FILTRE_LITTORAL=1 : CP en bord de mer (loi littoral,
-       base cp_bord_de_mer.csv)
+    2) FILTRE_LITTORAL=1 : CP en bord de mer (loi littoral)
     3) FILTRE_TENSION=1 : CP des villes agréables à vivre en
-       forte tension locative, France entière (cp_tension_locative.csv)
+       forte tension locative, France entière
     Les filtres s'additionnent (union des zones).
     """
     autorises = set(str(c).strip() for c in CP_AUTORISES if str(c).strip())
@@ -321,14 +341,14 @@ def filtre_cp(df):
             print(f"⚠️ FILTRE TENSION impossible : {e}")
     if not autorises:
         return df
-    return df[df["cp"].astype(str).str.strip().isin(autorises)]
+    df = df.copy()
+    df["cp"] = df["cp"].map(cp_norm)
+    return df[df["cp"].isin(autorises)]
 
 
 def filtres_costes(df):
     """
-    Filtres métier pour le viager René Costes uniquement :
-    rente <= RENTE_MAX, bouquet <= BOUQUET_MAX,
-    pas de femme < FEMME_AGE_MIN, pas de bien vendu.
+    Filtres métier pour le viager René Costes uniquement.
     """
     df = df.copy()
 
@@ -355,8 +375,7 @@ def filtres_costes(df):
 
 def geolocate(df):
     """
-    Associe UNE coordonnée par annonce. La base officielle contient
-    plusieurs lignes par code postal : on garde une seule par CP.
+    Associe UNE coordonnée par annonce (une seule ligne par CP).
     """
     df = df.copy().drop_duplicates(subset=["url"])
     if len(df) == 0:
@@ -368,8 +387,7 @@ def geolocate(df):
     geo.columns = ["cp", "lat", "lon"]
     geo["cp"] = geo["cp"].astype(str).str.strip()
     geo = geo.drop_duplicates(subset=["cp"], keep="first")
-    df["cp"] = (df["cp"].fillna("").astype(str)
-                .str.replace(".0", "", regex=False).str.strip())
+    df["cp"] = df["cp"].map(cp_norm)
     df = df.merge(geo, on="cp", how="left")
     print(f"📍 GEOLOCALISATION : {len(df)} annonces "
           f"({df['lat'].notna().sum()} géolocalisées)")
@@ -379,7 +397,6 @@ def geolocate(df):
 # =========================================================
 # CARTE GLOBALE UNIQUE
 # =========================================================
-# Marqueurs standard folium.Icon + popup comme code d'origine.
 
 def _popup(row):
     """Popup exactement dans le style du code d'origine."""
