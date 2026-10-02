@@ -243,27 +243,30 @@ vench;https://www.vench.fr/vente-166642-un-appartement-de-type-t3-et-un-parking-
 vench;https://www.vench.fr/vente-166634-un-ensemble-immobilier-saint-laurent-blangy.html;UN ENSEMBLE IMMOBILIER • Saint-Laurent-Blangy;Immeuble;;;;;62223;05/11/2026;;;future
 vench;https://www.vench.fr/vente-166632-un-appartement-avignon.html;UN APPARTEMENT • Avignon;Appartement;36000.0;;;;84000;19/11/2026;;;future
 vench;https://www.vench.fr/vente-166633-une-maison-dhabitation-avignon.html;UNE MAISON D’HABITATION • Avignon;Maison;9000.0;;;;84140;19/11/2026;;;future
-costes;https://www.costes-viager.com/acheter/aisne-02/saint-remy-blanzy/maison-4pieces-422402012;Vente à terme libre Ref. : 422402012 Maison - 4 pièces - 120m² Saint-Rémy-Blanzy (02210) Bouquet FAI 65 750 € Mensualités 833 €/mois Prix d'achat (FAI;Maison;;;65750.0;;02210;;;;inconnu
+costes;https://www.costes-viager.com/acheter/aisne-02/saint-remy-blanzy/maison-4pieces-422402012;Vente à terme libre Ref. : 422402012 Maison - 4 pièces - 120m² Saint-Rémy-Blanzy (02210) Bouquet FAI 65 750 € Mensualités 833 €/mois Prix d'achat (FAI;Maison;;;65750.0;;2210;;;;inconnu
 costes;https://www.costes-viager.com/acheter/lot-et-garonne-47/lafitte-sur-lot/maison-5pieces-422647055;46 % de décote Vente en nue propriété Ref. : 422647055 Maison - 5 pièces - 98m² Lafitte-sur-Lot (47320) Bouquet FAI 15 000 € Rente 331 €/mois Valeur d;Maison;;331.0;15000.0;;47320;;;;inconnu
 costes;https://www.costes-viager.com/acheter/gard-30/saint-jean-du-pin/maison-8pieces-422530021;31 % de décote Viager occupé Ref. : 422530021 Maison - 8 pièces - 250m² Saint-Jean-du-Pin (30140) Homme, 78 ans Bouquet FAI 100 400 € Rente 715 €/mois;Maison;;715.0;100400.0;78.0;30140;;;;inconnu
 costes;https://www.costes-viager.com/acheter/seine-et-marne-77/veneux-les-sablons/maison-4pieces-422677113;39 % de décote Vente en nue propriété Ref. : 422677113 Maison - 4 pièces - 66m² Veneux-les-Sablons (77250) Homme, 66 ans Bouquet FAI 125 365 € Valeur ;Maison;;;125365.0;66.0;77250;;;;inconnu
 costes;https://www.costes-viager.com/acheter/seine-et-marne-77/fontainebleau/appartement-1piece-422677114;34 % de décote Vente en nue propriété Ref. : 422677114 Appartement - 1 pièces - 39m² Fontainebleau (77300) Homme, 70 ans Bouquet FAI 144 540 € Valeur ;Appartement;;;144540.0;70.0;77300;;;;inconnu
 avoventes;https://avoventes.fr/recherche/toutes#;ate croissante Vente aux enchères Appartement APPARTEMENT + CAVE + PARKING à PONT SAINTE MAXENCE 18 Rue René Firmin, 60700 Pont-Sainte-Maxence, France;Appartement;2000.0;;;;60700;22/09/2026;;;terminee
-encheres_immo;https://encheres-immo.com/annonce/entrevaux-04320-f3-68-74-m2-veranda-et-cave-jardins-privatifs-et-stationnement-au-calme-beau-potentiel-apres-renovation-entrevaux-04320-1858;;Appartement;70000.0;;;;04320;;74;;inconnu
+encheres_immo;https://encheres-immo.com/annonce/entrevaux-04320-f3-68-74-m2-veranda-et-cave-jardins-privatifs-et-stationnement-au-calme-beau-potentiel-apres-renovation-entrevaux-04320-1858;;Appartement;70000.0;;;;4320;;74;;inconnu
 encheres_immo;https://encheres-immo.com/annonce/hauts-des-chaprais-besancon-appartement-t4-avec-cellier-et-stationnement-privatif-besancon-25000-3962;;Appartement;170000.0;;;;25000;;;;inconnu
 encheres_immo;https://encheres-immo.com/annonce/maison-de-bourg-partiellement-renovee-pleumartin-86450-3061;;Maison;40000.0;;;;86450;;;;inconnu
 encheres_immo;https://encheres-immo.com/annonce/a-vendre-en-vente-interactive-%E2%80%93-studio-1-piece-paris-07-paris-75007-3464;;Appartement;790000.0;;;;75007;;;;inconnu
-vench;https://www.vench.fr/vente-166660-un-appartement-avec-une-cave-et-un-garage-nice.html;UN APPARTEMENT AVEC UNE CAVE ET UN GARAGE • 57,36m² • Nice;Appartement;3000.0;;;;06300;19/11/2026;57,36;;future
+vench;https://www.vench.fr/vente-166660-un-appartement-avec-une-cave-et-un-garage-nice.html;UN APPARTEMENT AVEC UNE CAVE ET UN GARAGE • 57,36m² • Nice;Appartement;3000.0;;;;6300;19/11/2026;57,36;;future
 vench;https://www.vench.fr/vente-166655-un-appartement-saint-genest-lerpt.html;UN APPARTEMENT • 50,37m² • Saint-Genest-Lerpt;Appartement;;;;;42530;19/11/2026;50,37;;future
 vench;https://www.vench.fr/vente-166651-une-maison-d-habitation-tregunc.html;UNE MAISON D'HABITATION • 269,13m² • Trégunc;Maison;;;;;29910;04/11/2026;269,13;;future
-vench;https://www.vench.fr/vente-166659-un-appartement-cannes.html;UN APPARTEMENT • 55,31m² • Cannes;Appartement;;;;;06400;19/11/2026;55,31;;future
-vench;https://www.vench.fr/vente-166658-un-appartement-grasse.html;UN APPARTEMENT • 73,35m² • Grasse;Appartement;;;;;06130;19/11/2026;73,35;;future
+vench;https://www.vench.fr/vente-166659-un-appartement-cannes.html;UN APPARTEMENT • 55,31m² • Cannes;Appartement;;;;;6400;19/11/2026;55,31;;future
+vench;https://www.vench.fr/vente-166658-un-appartement-grasse.html;UN APPARTEMENT • 73,35m² • Grasse;Appartement;;;;;6130;19/11/2026;73,35;;future
 vench;https://www.vench.fr/vente-166652-un-bail-a-construction-saint-martin-d-uriage.html;UN BAIL À CONSTRUCTION • Saint-Martin-d'Uriage;Immeuble;;;;;38410;24/11/2026;;;future
 vench;https://www.vench.fr/vente-166650-une-maison-a-usage-d-habitation-plappeville.html;UNE MAISON À USAGE D'HABITATION • Plappeville;Maison;;;;;57050;02/11/2026;;;future
-vench;https://www.vench.fr/vente-166661-une-maison-mougins.html;UNE MAISON • Mougins;Maison;;;;;06250;19/11/2026;;;future
+vench;https://www.vench.fr/vente-166661-une-maison-mougins.html;UNE MAISON • Mougins;Maison;;;;;6250;19/11/2026;;;future
 vench;https://www.vench.fr/vente-166654-un-appartement-de-type-studio-saint-cyr-sur-mer.html;UN APPARTEMENT DE TYPE STUDIO • 43,77m² • Saint-Cyr-sur-Mer;Appartement;;;;;83270;12/11/2026;43,77;;future
 vench;https://www.vench.fr/vente-166653-des-bureaux-sassenage.html;DES BUREAUX • 65,83m² • Sassenage;Autre;;;;;38360;24/11/2026;65,83;;future
-vench;https://www.vench.fr/vente-166657-un-appartement-et-un-garage-cannes.html;UN APPARTEMENT ET UN GARAGE • 44,01m² • Cannes;Appartement;;;;;06400;19/11/2026;44,01;;future
+vench;https://www.vench.fr/vente-166657-un-appartement-et-un-garage-cannes.html;UN APPARTEMENT ET UN GARAGE • 44,01m² • Cannes;Appartement;;;;;6400;19/11/2026;44,01;;future
 vench;https://www.vench.fr/vente-166648-une-maison-individuelle-bining.html;UNE MAISON INDIVIDUELLE • Bining;Maison;23000.0;;;;57410;06/11/2026;;;future
 vench;https://www.vench.fr/vente-166647-un-tenement-a-usage-industriel-vienne.html;UN TÈNEMENT À USAGE INDUSTRIEL • Vienne;Autre;;;;;38200;03/11/2026;;;future
 vench;https://www.vench.fr/vente-166649-une-maison-d-habitation-hestroff.html;UNE MAISON D'HABITATION • Hestroff;Maison;;;;;57320;15/10/2026;;;future
+avoventes;https://avoventes.fr/;ate croissante Vente aux enchères Appartement APPARTEMENT + CAVE + PARKING à PONT SAINTE MAXENCE 18 Rue René Firmin, 60700 Pont-Sainte-Maxence, France;Appartement;40000.0;;;;60700;22/09/2026;;;terminee
+vench;https://www.vench.fr/vente-166662-un-appartement-et-une-cave-nice.html;UN APPARTEMENT ET UNE CAVE • 63,36m² • Nice;Appartement;40000.0;;;;06000;19/11/2026;63,36;;future
+vench;https://www.vench.fr/vente-166663-une-maison-de-4-pieces-saint-laurent-du-var.html;UNE MAISON DE 4 PIÈCES • 100,9m² • Saint-Laurent-du-Var;Maison;250000.0;;;;06700;19/11/2026;100,9;;future
