@@ -83,7 +83,6 @@ def send_telegram(message):
         print(f"❌ TELEGRAM : {e}")
         return False
 
-
 def send_file(path):
     token = os.getenv("TELEGRAM_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
@@ -100,10 +99,9 @@ def send_file(path):
     except Exception as e:
         print(f"❌ TELEGRAM FILE : {e}")
 
-
 # =========================================================
 # NETTOYAGE ET EXTRACTIONS COMMUNES
-# =========================================================
+# ==========================================================
 
 def clean(txt):
     if txt is None:
@@ -112,7 +110,6 @@ def clean(txt):
     for ch in ("\n", "\t", "\xa0", "\u202f"):
         txt = txt.replace(ch, " ")
     return re.sub(r"\s+", " ", txt).strip()
-
 
 def detect_type(txt):
     t = clean(txt).lower()
@@ -133,7 +130,6 @@ def detect_type(txt):
         return "Local commercial"
     return "Autre"
 
-
 def extract_price(txt):
     """Plus petit montant plausible du bloc texte."""
     try:
@@ -149,7 +145,6 @@ def extract_price(txt):
     except Exception:
         return None
 
-
 def extract_cp(txt):
     try:
         m = re.findall(r"\b(\d{5})\b", txt)
@@ -157,14 +152,12 @@ def extract_cp(txt):
     except Exception:
         return None
 
-
 def extract_surface(txt):
     try:
         m = re.search(r"(\d+(?:[\.,]\d+)?)\s?m²", txt, re.I)
         return m.group(1) if m else None
     except Exception:
         return None
-
 
 def cp_norm(x):
     """
@@ -180,7 +173,6 @@ def cp_norm(x):
         s = s[:-2]
     return s
 
-
 # =========================================================
 # NORMALISATION DE TITRE + DEDOUBLONNAGE
 # =========================================================
@@ -192,7 +184,6 @@ STOPWORDS = {
     "villa", "m2", "pieces", "piece", "chambres", "chambre",
 }
 
-
 def normalise_titre(txt):
     """Titre normalisé : minuscules, sans accents, sans mots vides."""
     t = clean(txt).lower()
@@ -201,7 +192,6 @@ def normalise_titre(txt):
     t = re.sub(r"[^a-z0-9\s]", " ", t)
     mots = [w for w in t.split() if w and w not in STOPWORDS]
     return " ".join(mots)
-
 
 def url_slug(u):
     """
@@ -215,12 +205,10 @@ def url_slug(u):
         return "vench:" + m.group(1)
     return None
 
-
 def titres_proches(a, b):
     if not a or not b:
         return False
     return SequenceMatcher(None, a, b).ratio() >= 0.65
-
 
 def meme_annonce(row, autres):
     na = normalise_titre(row.get("titre") or row.get("txt", ""))
@@ -257,7 +245,6 @@ def meme_annonce(row, autres):
             return True
     return False
 
-
 def deduplique(rows, connues=None):
     connues = connues or []
     nouvelles = []
@@ -292,7 +279,6 @@ def charge_historique():
         r["cp"] = cp_norm(r.get("cp"))
     return rows
 
-
 def save_historique(rows):
     """Ajoute les nouvelles annonces à l'historique global unique."""
     anciennes = charge_historique()
@@ -313,7 +299,6 @@ def save_historique(rows):
 
 LITTORAL_FILE = "cp_bord_de_mer.csv"
 TENSION_FILE = "cp_tension_locative.csv"
-
 
 def filtre_cp(df):
     """
@@ -344,7 +329,6 @@ def filtre_cp(df):
     df = df.copy()
     df["cp"] = df["cp"].map(cp_norm)
     return df[df["cp"].isin(autorises)]
-
 
 def filtres_costes(df):
     """
@@ -382,12 +366,14 @@ def geolocate(df):
         df["lat"] = pd.NA
         df["lon"] = pd.NA
         return df
-    geo = pd.read_csv(CSV_CP)
+    # dtype=str INDISPENSABLE : sinon pandas lit "06000" en entier 6000
+    # et aucun CP commençant par 0 ne matche (Nice, Ain, etc.) -> carte vide.
+    geo = pd.read_csv(CSV_CP, dtype={"code_postal": str})
     geo = geo[["code_postal", "latitude", "longitude"]]
     geo.columns = ["cp", "lat", "lon"]
-    geo["cp"] = geo["cp"].astype(str).str.strip()
+    geo["cp"] = geo["cp"].astype(str).str.strip().map(cp_norm).str.zfill(5)
     geo = geo.drop_duplicates(subset=["cp"], keep="first")
-    df["cp"] = df["cp"].map(cp_norm)
+    df["cp"] = df["cp"].map(cp_norm).str.zfill(5)
     df = df.merge(geo, on="cp", how="left")
     print(f"📍 GEOLOCALISATION : {len(df)} annonces "
           f"({df['lat'].notna().sum()} géolocalisées)")
@@ -396,7 +382,7 @@ def geolocate(df):
 
 # =========================================================
 # CARTE GLOBALE UNIQUE
-# =========================================================
+# ==========================================================
 
 def _popup(row):
     """Popup exactement dans le style du code d'origine."""
