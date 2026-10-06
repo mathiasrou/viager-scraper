@@ -283,4 +283,41 @@ encheres_immo;https://encheres-immo.com/annonce/maison-d-habitation-180m2-avec-g
 encheres_immo;https://encheres-immo.com/annonce/maison-centre-pentagone-3ch-jardin-garage-proximite-commodite-a-pied-la-roche-sur-yon-85000-315;;Maison;238900.0;;;;85000;;;;inconnu;04/10/2026
 encheres_immo;https://encheres-immo.com/annonce/villa-contemporaine-avec-piscine-et-grand-terrain-%E2%80%93-monclar-de-quercy-montdurausse-81630-1092;;Villa;280000.0;;;;81630;;;;inconnu;04/10/2026
 encheres_immo;https://encheres-immo.com/annonce/maison-de-caractere-saint-baldoph-73190-785;;Maison;380000.0;;;;73190;;;;inconnu;04/10/2026
-encheres_immo;https://encheres-immo.com/annonce/appartement-enghien-les-bains-4-pieces-96-m2-enghien-les-bains-95880-1578;;Appartement;2390000.0;;;;95880;;;4;inconnu;04/10/2026
+encheres_immo;https://encheres-immo.com/annonce/appartement-enghien-les-bains-4-pieces-96-m2-enghien-les-bains-95880-1578;;Appartement;2390000.0;;;;95880;;;4.0;inconnu;04/10/2026
+costes;https://www.costes-viager.com/acheter/paris-75/paris-17e-arrondissement/appartement-2pieces-422675285;Vente à terme libre Ref. : 422675285 Appartement - 2 pièces - 32m² Paris (75017) Bouquet FAI 74 880 € Mensualités 1 450 €/mois Prix d'achat (FAI) 335 ;Appartement;;;74880.0;;75017;;;;inconnu;06/10/2026
+costes;https://www.costes-viager.com/acheter/gironde-33/talence/appartement-2pieces-422633328;Viager libre Ref. : 422633328 Appartement - 2 pièces - 57m² Talence (33400) Bouquet FAI 48 293 € Rente 800 €/mois Valeur du bien 195 000 € Plus de dét;Appartement;;800.0;48293.0;;33400;;;;inconnu;06/10/2026
+costes;https://www.costes-viager.com/acheter/pyrenees-orientales-66/saint-cyprien/appartement-3pieces-422666031;Viager libre Ref. : 422666031 Appartement - 3 pièces - 70m² Saint-Cyprien (66750) Bouquet FAI 99 375 € Rente 671 €/mois Valeur du bien 225 000 € Loyer;Appartement;;671.0;99375.0;;66750;;;;inconnu;06/10/2026
+costes;https://www.costes-viager.com/acheter/ain-01/oyonnax/appartement-5pieces-422601005;Cession-bail à vie Ref. : 422601005 Appartement - 5 pièces - 110m² Oyonnax (01100) Prix d'achat (FAI) 187 245 € Loyer garanti 1 000 € Plus de détails;Appartement;;;;;01100;;;;inconnu;06/10/2026
+avoventes;https://avoventes.fr/ventes-aux-encheres;te aux enchères Appartement APPARTEMENT + EMPLACEMENT de STATIONNEMENT + CAVE à AULNAY-SOUS-BOIS 22 Rue Georges Seurat, 93600 Aulnay-sous-Bois, France;Appartement;16000.0;;;;93600;29/09/2026;;;terminee;06/10/2026
+encheres_immo;https://encheres-immo.com/annonce/maison-85eme-de-ligne-cosne-cours-sur-loire-58200-1274;;Maison;30000.0;;;;58200;;;;inconnu;06/10/2026
+immonotaires;https://immonotairesencheres.com/bien/t64pg3f09r8dhmrykrijqjrg;Appartement 30 rue Liège;Appartement;421000.0;;;;75008;;68.3;4.0;inconnu;06/10/2026
+immonotaires;https://immonotairesencheres.com/bien/nkxqju0urblcb1nr6tctw1fo;Appartement 57 rue du Théâtre;Appartement;315000.0;;;;75015;;44.18;2.0;inconnu;06/10/2026
+immonotaires;https://immonotairesencheres.com/bien/mfotdj83ahunzvff5jwlve6r;Propriété 15 rue Saint-Martin;Propriété;250000.0;;;;78200;;116.9;10.0;inconnu;06/10/2026
+immonotaires;https://immonotairesencheres.com/bien/plrueaw2no6kaprjqiekucse;Chambre 16 rue Berteaux Dumas (Lot 13);Habitation;66300.0;;;;92200;;10.52;1.0;inconnu;06/10/2026
+immonotaires;https://immonotairesencheres.com/bien/s2eef2ij1rhcouefv97yklpi;Chambre 16 rue Berteaux Dumas + cave (lots 12 et 15);Habitation;59800.0;;;;92200;;8.61;1.0;inconnu;06/10/2026
+vench;https://www.vench.fr/vente-166696-un-appartement-soissons.html;UN APPARTEMENT • 78,35m² • Soissons;Appartement;25800.0;;;;02200;24/11/2026;78,35;;future;06/10/2026
+vench;https://www.vench.fr/vente-166700-un-immeuble-a-usage-commercial-et-d-habitation-montlucon.html;UN IMMEUBLE À USAGE COMMERCIAL ET D'HABITATION • Montluçon;Immeuble;100000.0;;;;03100;12/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166691-une-maison-a-usage-d-habitation-saint-pierre-le-vieux.html;UNE MAISON À USAGE D'HABITATION • Saint-Pierre-le-Vieux;Maison;15000.0;;;;76740;20/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166693-un-immeuble-a-usage-d-habitation-berck.html;UN IMMEUBLE À USAGE D'HABITATION • Berck;Immeuble;25000.0;;;;62600;06/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166698-un-appartement-avec-une-cave-migennes.html;UN APPARTEMENT AVEC UNE CAVE • 78,2m² • Migennes;Appartement;43000.0;;;;89400;10/11/2026;78,2;;future;06/10/2026
+vench;https://www.vench.fr/vente-166695-un-ensemble-immobilier-brecy.html;UN ENSEMBLE IMMOBILIER • Brécy;Immeuble;239000.0;;;;02210;24/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166692-un-immeuble-a-usage-d-habitation-elincourt.html;UN IMMEUBLE À USAGE D'HABITATION • Elincourt;Immeuble;45000.0;;;;59127;20/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166701-une-maison-d-habitation-noth.html;UNE MAISON D'HABITATION • 125,5m² • Noth;Maison;30000.0;;;;23300;12/11/2026;125,5;;future;06/10/2026
+vench;https://www.vench.fr/vente-166690-une-maison-a-usage-d-habitation-rouen.html;UNE MAISON À USAGE D'HABITATION • Rouen;Maison;50000.0;;;;76000;20/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166694-un-local-charleville-mezieres.html;UN LOCAL • 44m² • Charleville-Mézières;Appartement;15000.0;;;;08000;26/11/2026;44;;future;06/10/2026
+vench;https://www.vench.fr/vente-166684-un-local-commercial-saint-pierre-d-oleron.html;UN LOCAL COMMERCIAL • 62,74m² • Saint-Pierre-d'Oléron;Local commercial;42000.0;;;;17310;02/12/2026;62,74;;future;06/10/2026
+vench;https://www.vench.fr/vente-166683-une-maison-a-usage-d-habitation-labatut.html;UNE MAISON À USAGE D'HABITATION • Labatut;Maison;80000.0;;;;40300;26/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166687-des-terres-agricoles-et-forestieres-proissans.html;DES TERRES AGRICOLES ET FORESTIÈRES • Proissans;Autre;7000.0;;;;24200;20/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166679-un-local-commercial-paris.html;UN LOCAL COMMERCIAL • 341,68m² • Paris;Local commercial;700000.0;;;;75001;19/11/2026;341,68;;future;06/10/2026
+vench;https://www.vench.fr/vente-166680-une-maison-de-ville-mery-sur-seine.html;UNE MAISON DE VILLE • 197,89m² • Méry-sur-Seine;Maison;30000.0;;;;10170;10/11/2026;197,89;;future;06/10/2026
+vench;https://www.vench.fr/vente-166678-un-parking-ferme-en-box-cannes.html;UN PARKING FERMÉ EN BOX • Cannes;Autre;40000.0;;;;06400;19/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166682-une-maison-a-usage-d-habitation-navarrenx.html;UNE MAISON À USAGE D'HABITATION • Navarrenx;Maison;59000.0;;;;64190;06/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166672-un-appartement-t1-la-roche-sur-yon.html;UN APPARTEMENT T1 • 27,68m² • La Roche-sur-Yon;Appartement;20000.0;;;;85000;02/11/2026;27,68;;future;06/10/2026
+vench;https://www.vench.fr/vente-166668-une-maison-d-habitation-plouguerneau.html;UNE MAISON D'HABITATION • Plouguerneau;Maison;38500.0;;;;29880;03/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166671-une-maison-a-usage-d-habitation-belz.html;UNE MAISON À USAGE D'HABITATION • Belz;Maison;260000.0;;;;56550;04/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166669-une-maison-a-usage-d-habitation-quiberon.html;UNE MAISON À USAGE D'HABITATION • Quiberon;Maison;75000.0;;;;56170;09/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166670-une-maison-d-habitation-hennebont.html;UNE MAISON D'HABITATION • Hennebont;Maison;58000.0;;;;56700;09/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166676-une-propriete-a-usage-d-habitation-lamorlaye.html;UNE PROPRIÉTÉ À USAGE D'HABITATION • Lamorlaye;Maison;600000.0;;;;60260;10/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166674-une-maison-d-habitation-requeil.html;UNE MAISON D'HABITATION • Requeil;Maison;120000.0;;;;72510;10/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166673-un-ensemble-immobilier-a-usage-commercial-besse-sur-braye.html;UN ENSEMBLE IMMOBILIER À USAGE COMMERCIAL • Bessé-sur-Braye;Autre;40000.0;;;;72310;10/11/2026;;;future;06/10/2026
+vench;https://www.vench.fr/vente-166675-un-immeuble-le-quesnel.html;UN IMMEUBLE • Le Quesnel;Immeuble;30000.0;;;;80118;12/11/2026;;;future;06/10/2026
