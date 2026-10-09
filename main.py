@@ -7,13 +7,12 @@ main.py — orchestrateur unique.
   3. applique les filtres métier (costes) puis le filtre CP
   4. sauvegarde l'historique (une ligne / annonce)
   5. génère UNE SEULE carte globale (tuiles OSM, un point par annonce)
-     avec les NOUVELLES annonces + celles des 7 derniers jours
+     avec UNIQUEMENT les nouvelles annonces du jour
   6. envoie la carte en FICHIER Telegram (sendDocument) :
      méthode d'origine dont les popups fonctionnaient dans Telegram
 """
 
 import asyncio
-import os
 import traceback
 from datetime import datetime
 
@@ -23,7 +22,6 @@ from viager_common import (
     send_telegram, send_file,
     save_historique, charge_historique, deduplique,
     filtre_cp, filtres_costes, geolocate, create_global_map,
-    historique_recent, OUTPUT_MAP,
 )
 import scrapers
 
@@ -85,64 +83,33 @@ async def main():
 
         save_historique(nouvelles)
 
-        # ---------- 4) CARTE : nouvelles (filtrées CP) + 7 derniers jours ----------
-        df_carte = pd.DataFrame()
-        nb_nouvelles_zone = 0
-        if nouvelles:
-            df_new = filtre_cp(pd.DataFrame(nouvelles))
-            nb_nouvelles_zone = len(df_new)
-            print(f"📍 Filtre CP (nouvelles) : {len(nouvelles)} → {nb_nouvelles_zone}")
-            if nb_nouvelles_zone:
-                df_carte = pd.concat([df_carte, df_new], ignore_index=True)
+        if not nouvelles:
+            send_telegram("😴 Aucune nouvelle annonce (5 sites)")
+            return
 
-        df_hist = pd.DataFrame(historique_recent(7))
-        if len(df_hist):
-            df_hist = filtre_cp(df_hist)
-            print(f"📍 Historique 7j dans la zone : {len(df_hist)} annonces")
-            if len(df_hist):
-                df_carte = pd.concat([df_carte, df_hist], ignore_index=True)
+        # ---------- 4) FILTRE CP ----------
+        df_new = pd.DataFrame(nouvelles)
+        avant = len(df_new)
+        df_new = filtre_cp(df_new)
+        print(f"📍 Filtre CP : {avant} → {len(df_new)} annonces")
+        if len(df_new) == 0:
+            send_telegram("😴 Nouvelles annonces, mais hors de ta zone")
+            return
 
-        if len(df_carte) and "url" in df_carte.columns:
-            df_carte = df_carte.drop_duplicates(subset=["url"])
-
-        carte_avant = None
-        if os.path.exists(OUTPUT_MAP):
-            try:
-                carte_avant = open(OUTPUT_MAP, encoding="utf-8").read()
-            except Exception:
-                carte_avant = None
-
-        # ---------- 5) CARTE GLOBALE UNIQUE ----------
-        df_carte = geolocate(df_carte)
-        create_global_map(df_carte)
-        nb_points = (int(df_carte["lat"].notna().sum())
-                     if "lat" in df_carte.columns else 0)
-
-        try:
-            carte_apres = open(OUTPUT_MAP, encoding="utf-8").read()
-        except Exception:
-            carte_apres = None
+        # ---------- 5) CARTE GLOBALE UNIQUE (nouvelles du jour uniquement) ----------
+        df_new = geolocate(df_new)
+        create_global_map(df_new)
+        nb_points = int(df_new["lat"].notna().sum()) if "lat" in df_new.columns else 0
 
         # ---------- 6) TELEGRAM : la carte en FICHIER (méthode d'origine) ----------
-        if nb_nouvelles_zone:
-            par_site = df_new["site"].value_counts().to_dict()
-            detail = "\n".join(f"• {s} : {n}" for s, n in par_site.items())
-            send_telegram(
-                f"🗺️ {nb_nouvelles_zone} nouvelle(s) annonce(s)\n"
-                f"{detail}\n"
-                f"📍 Carte : {nb_points} points (nouvelles + 7 derniers jours)"
-            )
-            send_file("carte_globale.html")
-        elif nouvelles:
-            send_telegram("😴 Nouvelles annonces, mais hors de ta zone")
-        elif nb_points and carte_avant != carte_apres:
-            send_telegram(
-                f"🗺️ Carte mise à jour : {nb_points} annonces visibles "
-                f"(7 derniers jours)"
-            )
-            send_file("carte_globale.html")
-        else:
-            send_telegram("😴 Aucune nouvelle annonce (5 sites)")
+        par_site = df_new["site"].value_counts().to_dict()
+        detail = "\n".join(f"• {s} : {n}" for s, n in par_site.items())
+        send_telegram(
+            f"🗺️ {len(df_new)} nouvelle(s) annonce(s)\n"
+            f"{detail}\n"
+            f"📍 Carte : {nb_points} points"
+        )
+        send_file("carte_globale.html")
 
         print("✅ FIN")
 
