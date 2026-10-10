@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_796399691fa5ddb48f97985178ae97f4 {
+                #map_65dc51a0e3e8f45a87fff62f4fb3fd19 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,14 +39,14 @@
 <body>
     
     
-            <div class="folium-map" id="map_796399691fa5ddb48f97985178ae97f4" ></div>
+            <div class="folium-map" id="map_65dc51a0e3e8f45a87fff62f4fb3fd19" ></div>
         
 </body>
 <script>
     
     
-            var map_796399691fa5ddb48f97985178ae97f4 = L.map(
-                "map_796399691fa5ddb48f97985178ae97f4",
+            var map_65dc51a0e3e8f45a87fff62f4fb3fd19 = L.map(
+                "map_65dc51a0e3e8f45a87fff62f4fb3fd19",
                 {
                     center: [46.5, 2.5],
                     crs: L.CRS.EPSG3857,
@@ -64,7 +64,7 @@
 
         
     
-            var tile_layer_49729cb5cf67ce3950b48594ae87c576 = L.tileLayer(
+            var tile_layer_fc28b97787d5ced38cb43b0c5a5ac20a = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -81,19 +81,59 @@
             );
         
     
-            tile_layer_49729cb5cf67ce3950b48594ae87c576.addTo(map_796399691fa5ddb48f97985178ae97f4);
+            tile_layer_fc28b97787d5ced38cb43b0c5a5ac20a.addTo(map_65dc51a0e3e8f45a87fff62f4fb3fd19);
         
     
-            var marker_06f80a81692f4d81eef1e48d504c2283 = L.marker(
-                [47.33186972578652, 5.032219099706737],
+            var marker_2e02d808a65fd00d839de9213f5ffc63 = L.marker(
+                [43.60070327269143, 1.432842540658348],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_796399691fa5ddb48f97985178ae97f4);
+            ).addTo(map_65dc51a0e3e8f45a87fff62f4fb3fd19);
         
     
-            var icon_fd325af363ae620ff1c451ca9105628b = L.AwesomeMarkers.icon(
+            var icon_5a890b1dcecadedc94c34adc73a58c39 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_2e02d808a65fd00d839de9213f5ffc63.setIcon(icon_5a890b1dcecadedc94c34adc73a58c39);
+        
+    
+        var popup_66fccfaa0ca093d1a9c692aa9b2fcd1b = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_b4a1119983377718748d8ba8ff3a4f01 = $(`<div id="html_b4a1119983377718748d8ba8ff3a4f01" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>💼 Bouquet : 147800.0 €<br>👴 Age : 78.0 ans<br>📍 CP : 31000<br><br>📝 32 % de décote Vente à terme occupée Ref. : 422631119 Maison - 4 pièces - 123m² proche de Toulouse (31000) Homme, 78 ans Bouquet FAI 147 800 € Mensual<br><br><a href="https://www.costes-viager.com/acheter/haute-garonne-31/pinsaguel/maison-4pieces-422631119" target="_blank">Voir annonce</a></div>`)[0];
+                popup_66fccfaa0ca093d1a9c692aa9b2fcd1b.setContent(html_b4a1119983377718748d8ba8ff3a4f01);
+            
+        
+
+        marker_2e02d808a65fd00d839de9213f5ffc63.bindPopup(popup_66fccfaa0ca093d1a9c692aa9b2fcd1b)
+        ;
+
+        
+    
+    
+            var marker_0ec834f01901b828f9c5a6bcf3de15d6 = L.marker(
+                [43.214099407864886, 3.1766437657647115],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_65dc51a0e3e8f45a87fff62f4fb3fd19);
+        
+    
+            var icon_e4d9e82e7d1018598ab6418b141cd7eb = L.AwesomeMarkers.icon(
                 {
   "markerColor": "blue",
   "iconColor": "white",
@@ -102,10 +142,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_06f80a81692f4d81eef1e48d504c2283.setIcon(icon_fd325af363ae620ff1c451ca9105628b);
+            marker_0ec834f01901b828f9c5a6bcf3de15d6.setIcon(icon_e4d9e82e7d1018598ab6418b141cd7eb);
         
     
-        var popup_ba5ce57877a3c9613af2bf4b4a69fd28 = L.popup({
+        var popup_d0ef76d6d1216e1304f444838512f70e = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -113,39 +153,39 @@
 
         
             
-                var html_b523e55a27d7cc2d0c6e6fbcacf1e35e = $(`<div id="html_b523e55a27d7cc2d0c6e6fbcacf1e35e" style="width: 100.0%; height: 100.0%;"><b>costes — Appartement</b><br><br>📆 Rente : 319.0 €/mois<br>💼 Bouquet : 29688.0 €<br>👴 Age : 68.0 ans<br>📍 CP : 21000<br><br>📝 51 % de décote Viager occupé Ref. : 422621004 Appartement - 2 pièces - 46m² Dijon (21000) Homme, 68 ans Bouquet FAI 29 688 € Rente 319 €/mois Valeur d<br><br><a href="https://www.costes-viager.com/acheter/cote-dor-21/dijon/appartement-2pieces-422621004" target="_blank">Voir annonce</a></div>`)[0];
-                popup_ba5ce57877a3c9613af2bf4b4a69fd28.setContent(html_b523e55a27d7cc2d0c6e6fbcacf1e35e);
+                var html_17f8f1763400c182d47acae9a50b9746 = $(`<div id="html_17f8f1763400c182d47acae9a50b9746" style="width: 100.0%; height: 100.0%;"><b>costes — Appartement</b><br><br>📆 Rente : 503.0 €/mois<br>💼 Bouquet : 40500.0 €<br>👴 Age : 75.0 ans<br>📍 CP : 11560<br><br>📝 Viager libre Ref. : 422611090 Appartement - 2 pièces - 32m² Fleury (11560) Homme, 75 ans Bouquet FAI 40 500 € Rente 503 €/mois Valeur du bien 100 000 <br><br><a href="https://www.costes-viager.com/acheter/aude-11/fleury/appartement-2pieces-422611090" target="_blank">Voir annonce</a></div>`)[0];
+                popup_d0ef76d6d1216e1304f444838512f70e.setContent(html_17f8f1763400c182d47acae9a50b9746);
             
         
 
-        marker_06f80a81692f4d81eef1e48d504c2283.bindPopup(popup_ba5ce57877a3c9613af2bf4b4a69fd28)
+        marker_0ec834f01901b828f9c5a6bcf3de15d6.bindPopup(popup_d0ef76d6d1216e1304f444838512f70e)
         ;
 
         
     
     
-            var marker_af673ef49b9bee10c7f243141d431304 = L.marker(
-                [43.58232741771358, 7.104839069976144],
+            var marker_2a1a35d22ea96b2bf81ae6c05a0eb9da = L.marker(
+                [42.04535431019174, 9.419125693122806],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_796399691fa5ddb48f97985178ae97f4);
+            ).addTo(map_65dc51a0e3e8f45a87fff62f4fb3fd19);
         
     
-            var icon_3f6770b9da2cb39dce7c4920b9f122d0 = L.AwesomeMarkers.icon(
+            var icon_1b7509f42f3c865b147a7e681a3fdeed = L.AwesomeMarkers.icon(
                 {
-  "markerColor": "purple",
+  "markerColor": "blue",
   "iconColor": "white",
   "icon": "building",
   "prefix": "fa",
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_af673ef49b9bee10c7f243141d431304.setIcon(icon_3f6770b9da2cb39dce7c4920b9f122d0);
+            marker_2a1a35d22ea96b2bf81ae6c05a0eb9da.setIcon(icon_1b7509f42f3c865b147a7e681a3fdeed);
         
     
-        var popup_4f68d9bd1dac2b847337e6fd5b610abb = L.popup({
+        var popup_d8672f9e100ed5b27a592c5395956c34 = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -153,132 +193,12 @@
 
         
             
-                var html_6914bd733dab289a7ea3fc255e8325fb = $(`<div id="html_6914bd733dab289a7ea3fc255e8325fb" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 280000.0 €<br>📐 Surface : 77,08 m²<br>📅 Vente : 19/11/2026<br>📍 CP : 06600<br><br>📝 UN APPARTEMENT AVEC UN PARKING • 77,08m² • Antibes<br><br><a href="https://www.vench.fr/vente-166756-un-appartement-avec-un-parking-antibes.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_4f68d9bd1dac2b847337e6fd5b610abb.setContent(html_6914bd733dab289a7ea3fc255e8325fb);
+                var html_e48c104bf9ad53f28107ac639759d0a3 = $(`<div id="html_e48c104bf9ad53f28107ac639759d0a3" style="width: 100.0%; height: 100.0%;"><b>costes — Appartement</b><br><br>📆 Rente : 1391.0 €/mois<br>💼 Bouquet : 124800.0 €<br>📍 CP : 20240<br><br>📝 Viager libre Ref. : 422520068 Appartement - 3 pièces - 92m² Ghisonaccia (20240) Bouquet FAI 124 800 € Rente 1 391 €/mois Valeur du bien 310 000 € Loye<br><br><a href="https://www.costes-viager.com/acheter/haute-corse-2b/ghisonaccia/appartement-3pieces-422520068" target="_blank">Voir annonce</a></div>`)[0];
+                popup_d8672f9e100ed5b27a592c5395956c34.setContent(html_e48c104bf9ad53f28107ac639759d0a3);
             
         
 
-        marker_af673ef49b9bee10c7f243141d431304.bindPopup(popup_4f68d9bd1dac2b847337e6fd5b610abb)
-        ;
-
-        
-    
-    
-            var marker_a5e5817fdc65b070f258f18b7e7b0c5b = L.marker(
-                [48.40845502390759, -4.499626051518535],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_796399691fa5ddb48f97985178ae97f4);
-        
-    
-            var icon_6fecf29b864da3e5edb9bc0bb19f5990 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "industry",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_a5e5817fdc65b070f258f18b7e7b0c5b.setIcon(icon_6fecf29b864da3e5edb9bc0bb19f5990);
-        
-    
-        var popup_4b518b4b1ff8ad720d0070aea7115241 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_8590feb757dbe6502068e7e1db2684aa = $(`<div id="html_8590feb757dbe6502068e7e1db2684aa" style="width: 100.0%; height: 100.0%;"><b>vench — Immeuble</b><br><br>💰 Prix : 400000.0 €<br>📅 Vente : 03/11/2026<br>📍 CP : 29200<br><br>📝 UN IMMEUBLE À USAGE D'HABITATION • Brest<br><br><a href="https://www.vench.fr/vente-166757-un-immeuble-a-usage-d-habitation-brest.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_4b518b4b1ff8ad720d0070aea7115241.setContent(html_8590feb757dbe6502068e7e1db2684aa);
-            
-        
-
-        marker_a5e5817fdc65b070f258f18b7e7b0c5b.bindPopup(popup_4b518b4b1ff8ad720d0070aea7115241)
-        ;
-
-        
-    
-    
-            var marker_08755864820c8d3f44d69958b8e3a2b1 = L.marker(
-                [43.6864733180808, 7.182242405170719],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_796399691fa5ddb48f97985178ae97f4);
-        
-    
-            var icon_294e6d1aef8fe56c278d269abfb8beaa = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "building",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_08755864820c8d3f44d69958b8e3a2b1.setIcon(icon_294e6d1aef8fe56c278d269abfb8beaa);
-        
-    
-        var popup_b89c337332079619b4c1da5e927ab2a8 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_43d25af755415f0dea2eb4cc9823bf42 = $(`<div id="html_43d25af755415f0dea2eb4cc9823bf42" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 97000.0 €<br>📐 Surface : 44,49 m²<br>📅 Vente : 19/11/2026<br>📍 CP : 06700<br><br>📝 UN APPARTEMENT ET UN EMPLACEMENT DE STATIONNEMENT • 44,49m² • Saint-Laurent-du-Var<br><br><a href="https://www.vench.fr/vente-166755-un-appartement-et-un-emplacement-de-stationnement-saint-laurent-du-var.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_b89c337332079619b4c1da5e927ab2a8.setContent(html_43d25af755415f0dea2eb4cc9823bf42);
-            
-        
-
-        marker_08755864820c8d3f44d69958b8e3a2b1.bindPopup(popup_b89c337332079619b4c1da5e927ab2a8)
-        ;
-
-        
-    
-    
-            var marker_fa4141c87962900ed21a95876693fca6 = L.marker(
-                [43.70315758943409, 7.252811928378465],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_796399691fa5ddb48f97985178ae97f4);
-        
-    
-            var icon_58ebe6a6e94a4e9b6f3811d02abdb464 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "building",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_fa4141c87962900ed21a95876693fca6.setIcon(icon_58ebe6a6e94a4e9b6f3811d02abdb464);
-        
-    
-        var popup_4605fd54ebf53fb7d8e54a2fda112e11 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_20810900294e583b4fcacb49b2431230 = $(`<div id="html_20810900294e583b4fcacb49b2431230" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 30000.0 €<br>📐 Surface : 35,01 m²<br>📅 Vente : 03/12/2026<br>📍 CP : 06000<br><br>📝 UN APPARTEMENT • 35,01m² • Nice<br><br><a href="https://www.vench.fr/vente-166753-un-appartement-nice.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_4605fd54ebf53fb7d8e54a2fda112e11.setContent(html_20810900294e583b4fcacb49b2431230);
-            
-        
-
-        marker_fa4141c87962900ed21a95876693fca6.bindPopup(popup_4605fd54ebf53fb7d8e54a2fda112e11)
+        marker_2a1a35d22ea96b2bf81ae6c05a0eb9da.bindPopup(popup_d8672f9e100ed5b27a592c5395956c34)
         ;
 
         
