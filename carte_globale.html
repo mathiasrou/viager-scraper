@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_dd572bf312e343fdf4aab44231e886c2 {
+                #map_fdaa858c26d2314186152c83626c1391 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,14 +39,14 @@
 <body>
     
     
-            <div class="folium-map" id="map_dd572bf312e343fdf4aab44231e886c2" ></div>
+            <div class="folium-map" id="map_fdaa858c26d2314186152c83626c1391" ></div>
         
 </body>
 <script>
     
     
-            var map_dd572bf312e343fdf4aab44231e886c2 = L.map(
-                "map_dd572bf312e343fdf4aab44231e886c2",
+            var map_fdaa858c26d2314186152c83626c1391 = L.map(
+                "map_fdaa858c26d2314186152c83626c1391",
                 {
                     center: [46.5, 2.5],
                     crs: L.CRS.EPSG3857,
@@ -64,7 +64,7 @@
 
         
     
-            var tile_layer_19709e9ada88c3f247fcb50921089a24 = L.tileLayer(
+            var tile_layer_8b284cbb31414e3d9025eea6fd701d3c = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -81,19 +81,59 @@
             );
         
     
-            tile_layer_19709e9ada88c3f247fcb50921089a24.addTo(map_dd572bf312e343fdf4aab44231e886c2);
+            tile_layer_8b284cbb31414e3d9025eea6fd701d3c.addTo(map_fdaa858c26d2314186152c83626c1391);
         
     
-            var marker_47f712417f0d745c136662bd3dd88c25 = L.marker(
-                [43.61000816304725, 3.87416937209812],
+            var marker_5a5ed95f1be12aa6e23f711bc021614c = L.marker(
+                [44.20940613912036, -1.1919663311481186],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_dd572bf312e343fdf4aab44231e886c2);
+            ).addTo(map_fdaa858c26d2314186152c83626c1391);
         
     
-            var icon_3f4f552e609cb2af5a60b553eb73dda7 = L.AwesomeMarkers.icon(
+            var icon_63bfbcc78b1e968dd9449ca21fd31a38 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_5a5ed95f1be12aa6e23f711bc021614c.setIcon(icon_63bfbcc78b1e968dd9449ca21fd31a38);
+        
+    
+        var popup_e526804d048f11503bcdd36799f6ead8 = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_7ee4faf93ff06248b4848de4a56336a7 = $(`<div id="html_7ee4faf93ff06248b4848de4a56336a7" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>📆 Rente : 310.0 €/mois<br>💼 Bouquet : 51850.0 €<br>👴 Age : 65.0 ans<br>📍 CP : 40200<br><br>📝 58 % de décote Viager occupé Ref. : 422640100 Maison - 4 pièces - 83m² Sainte-Eulalie-en-Born (40200) Homme, 63 ans Homme, 65 ans Bouquet FAI 51 850 €<br><br><a href="https://www.costes-viager.com/acheter/landes-40/sainte-eulalie-en-born/maison-4pieces-422640100" target="_blank">Voir annonce</a></div>`)[0];
+                popup_e526804d048f11503bcdd36799f6ead8.setContent(html_7ee4faf93ff06248b4848de4a56336a7);
+            
+        
+
+        marker_5a5ed95f1be12aa6e23f711bc021614c.bindPopup(popup_e526804d048f11503bcdd36799f6ead8)
+        ;
+
+        
+    
+    
+            var marker_19478e072a1f1ebc735b6ae9e511c58b = L.marker(
+                [43.94155610910151, 4.833257484271234],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_fdaa858c26d2314186152c83626c1391);
+        
+    
+            var icon_ad41461ce0af61c1a98d8109f115e505 = L.AwesomeMarkers.icon(
                 {
   "markerColor": "blue",
   "iconColor": "white",
@@ -102,10 +142,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_47f712417f0d745c136662bd3dd88c25.setIcon(icon_3f4f552e609cb2af5a60b553eb73dda7);
+            marker_19478e072a1f1ebc735b6ae9e511c58b.setIcon(icon_ad41461ce0af61c1a98d8109f115e505);
         
     
-        var popup_56f99de5aca4a6245d3c927843e5b9cb = L.popup({
+        var popup_bd9e255de00642dc1dcda4440f44b66f = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -113,12 +153,132 @@
 
         
             
-                var html_43063167f34ee2aae9aaf6aede32cce5 = $(`<div id="html_43063167f34ee2aae9aaf6aede32cce5" style="width: 100.0%; height: 100.0%;"><b>costes — Appartement</b><br><br>📆 Rente : 1393.0 €/mois<br>💼 Bouquet : 71250.0 €<br>👴 Age : 92.0 ans<br>📍 CP : 34000<br><br>📝 31 % de décote Viager occupé Ref. : 422634046 Appartement - 3 pièces - 71m² Montpellier (34000) Femme, 92 ans Homme, 89 ans Bouquet FAI 71 250 € Rente<br><br><a href="https://www.costes-viager.com/acheter/herault-34/montpellier/appartement-3pieces-422634046" target="_blank">Voir annonce</a></div>`)[0];
-                popup_56f99de5aca4a6245d3c927843e5b9cb.setContent(html_43063167f34ee2aae9aaf6aede32cce5);
+                var html_34d2fa2098b5a2a36e2d9a60bfddee28 = $(`<div id="html_34d2fa2098b5a2a36e2d9a60bfddee28" style="width: 100.0%; height: 100.0%;"><b>costes — Appartement</b><br><br>💼 Bouquet : 103000.0 €<br>👴 Age : 68.0 ans<br>📍 CP : 84000<br><br>📝 43 % de décote Vente en nue propriété Ref. : 422684086 Appartement - 0 pièces - 103m² Avignon (84000) Homme, 68 ans Bouquet FAI 103 000 € Valeur du bi<br><br><a href="https://www.costes-viager.com/acheter/vaucluse-84/avignon/appartement-0piece-422684086" target="_blank">Voir annonce</a></div>`)[0];
+                popup_bd9e255de00642dc1dcda4440f44b66f.setContent(html_34d2fa2098b5a2a36e2d9a60bfddee28);
             
         
 
-        marker_47f712417f0d745c136662bd3dd88c25.bindPopup(popup_56f99de5aca4a6245d3c927843e5b9cb)
+        marker_19478e072a1f1ebc735b6ae9e511c58b.bindPopup(popup_bd9e255de00642dc1dcda4440f44b66f)
+        ;
+
+        
+    
+    
+            var marker_f9061369c362fa53d0abd90a91081acc = L.marker(
+                [43.0343679869721, 2.9793330309737165],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_fdaa858c26d2314186152c83626c1391);
+        
+    
+            var icon_fb57fffa41680ab6919b3ad49c0b9f11 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "building",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_f9061369c362fa53d0abd90a91081acc.setIcon(icon_fb57fffa41680ab6919b3ad49c0b9f11);
+        
+    
+        var popup_d20ca9763844fa857dffda985c45f1df = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_be56fd98a199d8d4c1174cb419f49b8c = $(`<div id="html_be56fd98a199d8d4c1174cb419f49b8c" style="width: 100.0%; height: 100.0%;"><b>avoventes — Appartement</b><br><br>💰 Prix : 64000.0 €<br>📅 Vente : 05/10/2026<br>📍 CP : 11130<br><br>📝 ion Trier par Date croissante Vente aux enchères Maison UNE MAISON D’HABITATION AVEC TERRAIN ATTENANT à SIGEAN 3 Rue Marie Curie, 11130 Sigean, France<br><br><a href="https://avoventes.fr/ventes-passees" target="_blank">Voir annonce</a></div>`)[0];
+                popup_d20ca9763844fa857dffda985c45f1df.setContent(html_be56fd98a199d8d4c1174cb419f49b8c);
+            
+        
+
+        marker_f9061369c362fa53d0abd90a91081acc.bindPopup(popup_d20ca9763844fa857dffda985c45f1df)
+        ;
+
+        
+    
+    
+            var marker_9662a6739a84cfd9919ab5247b7b090d = L.marker(
+                [43.42816129150777, 6.652300606138354],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_fdaa858c26d2314186152c83626c1391);
+        
+    
+            var icon_b5070642312a14a9c2242a10d0b28e2a = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "purple",
+  "iconColor": "white",
+  "icon": "building",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_9662a6739a84cfd9919ab5247b7b090d.setIcon(icon_b5070642312a14a9c2242a10d0b28e2a);
+        
+    
+        var popup_16bec9fe345289b0ce6382436d85dad8 = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_c0e05e3fca4b155ffdf05e71f17437f1 = $(`<div id="html_c0e05e3fca4b155ffdf05e71f17437f1" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 10000.0 €<br>📐 Surface : 39,85 m²<br>📅 Vente : 20/11/2026<br>📍 CP : 83520<br><br>📝 UN APPARTEMENT • 39,85m² • Roquebrune-sur-Argens<br><br><a href="https://www.vench.fr/vente-166784-un-appartement-roquebrune-sur-argens.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_16bec9fe345289b0ce6382436d85dad8.setContent(html_c0e05e3fca4b155ffdf05e71f17437f1);
+            
+        
+
+        marker_9662a6739a84cfd9919ab5247b7b090d.bindPopup(popup_16bec9fe345289b0ce6382436d85dad8)
+        ;
+
+        
+    
+    
+            var marker_3316f19c94a5bfb721a4d85088cc574c = L.marker(
+                [50.63108063960175, 3.0468401440932507],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_fdaa858c26d2314186152c83626c1391);
+        
+    
+            var icon_4c4885a81ff7333fa5fa7d013bd2ecee = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "purple",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_3316f19c94a5bfb721a4d85088cc574c.setIcon(icon_4c4885a81ff7333fa5fa7d013bd2ecee);
+        
+    
+        var popup_4f950d6958f6f7c12d75b5feca661f32 = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_3d65626f0cb4193a7ba8e6a14597c8f3 = $(`<div id="html_3d65626f0cb4193a7ba8e6a14597c8f3" style="width: 100.0%; height: 100.0%;"><b>vench — Maison</b><br><br>💰 Prix : 85000.0 €<br>📅 Vente : 02/12/2026<br>📍 CP : 59000<br><br>📝 UNE MAISON À USAGE D'HABITATION • Lille<br><br><a href="https://www.vench.fr/vente-166796-une-maison-a-usage-d-habitation-lille.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_4f950d6958f6f7c12d75b5feca661f32.setContent(html_3d65626f0cb4193a7ba8e6a14597c8f3);
+            
+        
+
+        marker_3316f19c94a5bfb721a4d85088cc574c.bindPopup(popup_4f950d6958f6f7c12d75b5feca661f32)
         ;
 
         
