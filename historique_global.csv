@@ -507,7 +507,7 @@ costes;https://www.costes-viager.com/acheter/haute-garonne-31/merville/maison-5p
 avoventes;https://avoventes.fr/liste-cabinets; adresse email. Inscription Trier par Date croissante Vente aux enchères Appartement UN APPARTEMENT À VIENNE 15 Quai Jean Jaurès, 38200 Vienne, France;Appartement;70000.0;;;;38200;06/10/2026;;;terminee;16/10/2026
 encheres_immo;https://encheres-immo.com/annonce/fontaine-argent-appartement-de-cartactere-de-169-m2-avec-4-chambres-besancon-25000-823;;Appartement;390000.0;;;;25000;;;;inconnu;16/10/2026
 encheres_immo;https://encheres-immo.com/annonce/appartement-spacieux-avec-4-chambres-balcon-et-grand-garage-lyon-5e-arrondissement-69005-4474;;Appartement;420000.0;;;;69005;;;;inconnu;16/10/2026
-encheres_immo;https://encheres-immo.com/annonce/grasse-dernier-etage-4-pieces-renove-avec-charme-et-volumes-balcon-et-2-greniers-grasse-06130-214;;Autre;170000.0;;;;06130;;;4;inconnu;16/10/2026
+encheres_immo;https://encheres-immo.com/annonce/grasse-dernier-etage-4-pieces-renove-avec-charme-et-volumes-balcon-et-2-greniers-grasse-06130-214;;Autre;170000.0;;;;06130;;;4.0;inconnu;16/10/2026
 encheres_immo;https://encheres-immo.com/annonce/garage-96-m2-grasse-34-bd-victor-hugo-grasse-06130-1244;;Autre;40000.0;;;;06130;;96;;inconnu;16/10/2026
 encheres_immo;https://encheres-immo.com/annonce/local-commercial-hillion-22120-3975;;Local commercial;240000.0;;;;22120;;;;inconnu;16/10/2026
 encheres_immo;https://encheres-immo.com/annonce/maison-en-pierre-piscine-dependance-garage-illats-33720-622;;Maison;263700.0;;;;33720;;;;inconnu;16/10/2026
@@ -531,3 +531,10 @@ vench;https://www.vench.fr/vente-166846-un-batiment-industriel-saint-etienne.htm
 vench;https://www.vench.fr/vente-166847-un-immeuble-lesparre-medoc.html;UN IMMEUBLE • Lesparre-Médoc;Immeuble;111100.0;;;;33340;10/12/2026;;;future;16/10/2026
 vench;https://www.vench.fr/vente-166853-un-appartement-nantes.html;UN APPARTEMENT • 92,53m² • Nantes;Appartement;50000.0;;;;44000;04/12/2026;92,53;;future;16/10/2026
 vench;https://www.vench.fr/vente-166840-une-longere-normande-chavigny-bailleul.html;UNE LONGÈRE NORMANDE • 197,47m² • Chavigny-Bailleul;Maison;115000.0;;;;27220;07/12/2026;197,47;;future;16/10/2026
+costes;https://www.costes-viager.com/acheter/charente-maritime-17/royan/appartement-3pieces-422517112;39 % de décote Viager occupé Ref. : 422517112 Appartement - 3 pièces - 54m² Royan (17200) Homme, 78 ans Bouquet FAI 34 175 € Rente 488 €/mois Valeur d;Appartement;;488.0;34175.0;78.0;17200;;;;inconnu;17/10/2026
+avoventes;https://avoventes.fr/recherche/toutes?sort=date&order=asc&display=liste;email. Inscription Trier par Date croissante Vente aux enchères Maison MAISON à CHAMBLEY-BUSSIERES 36 Rue de la Gare, 54890 Chambley-Bussières, France;Appartement;100000.0;;;;54890;07/10/2026;;;terminee;17/10/2026
+encheres_immo;https://encheres-immo.com/annonce/maison-familiale-avec-piscine-%E2%80%93-grasse-saint-anne-proche-saint-jacques-grasse-06130-2963;;Maison;380000.0;;;;06130;;;;inconnu;17/10/2026
+encheres_immo;https://encheres-immo.com/annonce/a-vendre-studio-16m2-paris-18eme-paris-75018-1443;;Appartement;85000.0;;;;75018;;;;inconnu;17/10/2026
+vench;https://www.vench.fr/vente-166848-un-appartement-noisy-le-sec.html;UN APPARTEMENT • 51,3m² • Noisy-le-Sec;Appartement;25000.0;;;;93130;08/12/2026;51,3;;future;17/10/2026
+vench;https://www.vench.fr/vente-166835-2eme-lot-de-la-vente-une-piece-unique-paris-5eme.html;2EME LOT DE LA VENTE : UNE PIÈCE UNIQUE • 7,7m² • Paris 5ème;Autre;20000.0;;;;75005;26/11/2026;7,7;;future;17/10/2026
+vench;https://www.vench.fr/vente-166804-18-appartements-rouen.html;18 APPARTEMENTS • Rouen;Appartement;100000.0;;;;76000;26/11/2026;;;future;17/10/2026
