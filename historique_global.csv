@@ -567,7 +567,7 @@ costes;https://www.costes-viager.com/acheter/loiret-45/ferte-saint-aubin/maison-
 costes;https://www.costes-viager.com/acheter/pas-de-calais-62/oignies/maison-4pieces-422662088;52 % de décote Viager occupé Ref. : 422662088 Maison - 4 pièces - 145m² Oignies (62590) Homme, 68 ans Bouquet FAI 65 200 € Rente 593 €/mois Valeur du ;Maison;;593.0;65200.0;68.0;62590;;;;inconnu;20/10/2026
 costes;https://www.costes-viager.com/acheter/yvelines-78/poissy/appartement-3pieces-422578147;36 % de décote Vente en nue propriété Ref. : 422578147 Appartement - 3 pièces - 54m² Poissy (78300) Homme, 74 ans Bouquet FAI 141 160 € Valeur du bien;Appartement;;;141160.0;74.0;78300;;;;inconnu;20/10/2026
 avoventes;https://avoventes.fr/recherche/toutes?sort=date&order=asc&display=tuiles;r par Date croissante Vente aux enchères Maison UNE MAISON A USAGE D’HABITATION à GIGNAC-LA-NERTHE 38 Av. des Valampes, 13180 Gignac-la-Nerthe, France;Appartement;100000.0;;;;13180;12/10/2026;;;terminee;20/10/2026
-encheres_immo;https://encheres-immo.com/annonce/vente-demo-maison-5-pieces-beaux-volumes-ploeren-56880-4725;;Maison;338000.0;;;;56880;;;5;inconnu;20/10/2026
+encheres_immo;https://encheres-immo.com/annonce/vente-demo-maison-5-pieces-beaux-volumes-ploeren-56880-4725;;Maison;338000.0;;;;56880;;;5.0;inconnu;20/10/2026
 vench;https://www.vench.fr/vente-166898-un-appartement-poitiers.html;UN APPARTEMENT • Poitiers;Appartement;36847.0;;;;86000;24/11/2026;;;future;20/10/2026
 vench;https://www.vench.fr/vente-166894-une-maison-a-usage-d-habitation-jeumont.html;UNE MAISON À USAGE D'HABITATION • Jeumont;Maison;5000.0;;;;59460;04/12/2026;;;future;20/10/2026
 vench;https://www.vench.fr/vente-166900-deux-maisons-marnes-la-coquette.html;DEUX MAISONS • Marnes-la-Coquette;Maison;2900000.0;;;;92430;03/12/2026;;;future;20/10/2026
@@ -588,3 +588,27 @@ vench;https://www.vench.fr/vente-166890-une-maison-mitoyenne-seclin.html;UNE MAI
 vench;https://www.vench.fr/vente-166889-un-local-commercial-et-une-cave-le-havre.html;UN LOCAL COMMERCIAL ET UNE CAVE • 46,6m² • Le Havre;Appartement;8000.0;;;;76600;26/11/2026;46,6;;future;20/10/2026
 vench;https://www.vench.fr/vente-166892-des-surfaces-a-amenager-en-entrepot-roubaix.html;DES SURFACES À AMÉNAGER EN ENTREPÔT • Roubaix;Autre;15000.0;;;;59100;02/12/2026;;;future;20/10/2026
 vench;https://www.vench.fr/vente-166891-une-maison-a-usage-d-habitation-la-sentinelle.html;UNE MAISON À USAGE D'HABITATION • 90,83m² • La Sentinelle;Maison;27000.0;;;;59174;19/11/2026;90,83;;future;20/10/2026
+costes;https://www.costes-viager.com/acheter/pyrenees-orientales-66/perpignan/appartement-1piece-422666092;Vente à terme libre Ref. : 422666092 Appartement - 1 pièces - 30m² Perpignan (66000) Bouquet FAI 62 600 € Mensualités 583 €/mois Prix d'achat (FAI) 13;Appartement;;;62600.0;;66000;;;;inconnu;21/10/2026
+costes;https://www.costes-viager.com/acheter/landes-40/seignosse/appartement-2pieces-422665048;Vente à terme libre Ref. : 422665048 Appartement - 2 pièces - 42m² Seignosse (40510) Bouquet FAI 55 200 € Mensualités 667 €/mois Prix d'achat (FAI) 17;Appartement;;;55200.0;;40510;;;;inconnu;21/10/2026
+encheres_immo;https://encheres-immo.com/annonce/villa-de-215m2-sur-terrain-clos-de-1500m2-4-chambres-tours-37000-2544;;Villa;680000.0;;;;37000;;;;inconnu;21/10/2026
+vench;https://www.vench.fr/vente-166918-maison-dhabitation-de-7155-m-neuilly-plaisance.html;MAISON D’HABITATION DE 71,55 M² • Neuilly-Plaisance;Appartement;200000.0;;;;93360;15/12/2026;71,55;;future;21/10/2026
+vench;https://www.vench.fr/vente-166927-un-appartement-de-type-t2-carcassonne.html;UN APPARTEMENT DE TYPE T2 • Carcassonne;Appartement;40000.0;;;;11000;01/12/2026;;;future;21/10/2026
+vench;https://www.vench.fr/vente-166921-un-appartement-et-un-box-garage-marseille.html;UN APPARTEMENT ET UN BOX GARAGE • 58,69m² • Marseille;Appartement;35000.0;;;;13003;25/11/2026;58,69;;future;21/10/2026
+vench;https://www.vench.fr/vente-166928-un-appartement-et-un-parking-barbaste.html;UN APPARTEMENT ET UN PARKING • 67,87m² • Barbaste;Appartement;15000.0;;;;47230;19/11/2026;67,87;;future;21/10/2026
+vench;https://www.vench.fr/vente-166926-une-villa-individuelle-pomerols.html;UNE VILLA INDIVIDUELLE • 64,95m² • Pomérols;Maison;95000.0;;;;34810;17/11/2026;64,95;;future;21/10/2026
+vench;https://www.vench.fr/vente-166919-6-appartements-marseille.html;6 APPARTEMENTS • Marseille;Appartement;490000.0;;;;13007;02/12/2026;;;future;21/10/2026
+vench;https://www.vench.fr/vente-166925-une-maison-de-village-lezignan-corbieres.html;UNE MAISON DE VILLAGE • Lézignan-Corbières;Maison;35000.0;;;;11200;07/12/2026;;;future;21/10/2026
+vench;https://www.vench.fr/vente-166923-un-appartement-de-type-5-lapalud.html;UN APPARTEMENT DE TYPE 5 • 90,22m² • Lapalud;Appartement;15000.0;;;;84840;10/12/2026;90,22;;future;21/10/2026
+vench;https://www.vench.fr/vente-166924-un-appartement-de-type-3-saint-herblain.html;UN APPARTEMENT DE TYPE 3 • Saint-Herblain;Appartement;180400.0;;;;44800;27/11/2026;;;future;21/10/2026
+vench;https://www.vench.fr/vente-166920-un-immeuble-de-32098-m-paris-6eme.html;Un IMMEUBLE de 320,98 m² • Paris 6ème;Immeuble;900000.0;;;;75006;17/12/2026;320,98;;future;21/10/2026
+vench;https://www.vench.fr/vente-166917-un-appartement-meuble-marseille.html;UN APPARTEMENT MEUBLÉ • 27,15m² • Marseille;Appartement;60000.0;;;;13002;25/11/2026;27,15;;future;21/10/2026
+vench;https://www.vench.fr/vente-166908-un-appartement-et-un-box-montmorency.html;UN APPARTEMENT ET UN BOX • 66,47m² • Montmorency;Appartement;90000.0;;;;95160;15/12/2026;66,47;;future;21/10/2026
+vench;https://www.vench.fr/vente-166912-un-immeuble-a-usage-d-habitation-limoges.html;UN IMMEUBLE À USAGE D'HABITATION • Limoges;Immeuble;40000.0;;;;87000;07/12/2026;;;future;21/10/2026
+vench;https://www.vench.fr/vente-166914-un-appartement-en-triplex-orleans.html;UN APPARTEMENT EN TRIPLEX • Orléans;Appartement;20000.0;;;;45000;18/12/2026;;;future;21/10/2026
+vench;https://www.vench.fr/vente-166916-deux-maisons-individuelles-chateau-arnoux-saint-auban.html;DEUX MAISONS INDIVIDUELLES • 337,7m² • Château-Arnoux-Saint-Auban;Maison;300000.0;;;;04160;03/12/2026;337,7;;future;21/10/2026
+vench;https://www.vench.fr/vente-166913-un-site-d-une-ancienne-carrosserie-vayres.html;UN SITE D'UNE ANCIENNE CARROSSERIE • Vayres;Immeuble;15000.0;;;;87600;07/12/2026;;;future;21/10/2026
+vench;https://www.vench.fr/vente-166910-un-appartement-de-type-t3-et-un-parking-bois-d-arcy.html;UN APPARTEMENT DE TYPE T3 ET UN PARKING • 55,86m² • Bois-d'Arcy;Appartement;19500.0;;;;78390;09/12/2026;55,86;;future;21/10/2026
+vench;https://www.vench.fr/vente-166915-une-villa-avec-garage-et-piscine-nimes.html;UNE VILLA AVEC GARAGE ET PISCINE • Nîmes;Maison;49000.0;;;;30000;26/11/2026;;;future;21/10/2026
+vench;https://www.vench.fr/vente-166911-un-studio-de-1967-m-paris-17eme.html;UN STUDIO DE 19,67 M² • Paris 17ème;Appartement;99000.0;;;;75017;10/12/2026;19,67;;future;21/10/2026
+vench;https://www.vench.fr/vente-166909-un-appartement-eaubonne.html;UN APPARTEMENT • 42,42m² • Eaubonne;Appartement;65000.0;;;;95600;08/12/2026;42,42;;future;21/10/2026
+vench;https://www.vench.fr/vente-166903-un-appartement-thiais.html;UN APPARTEMENT • 42,32m² • Thiais;Appartement;32000.0;;;;94320;26/11/2026;42,32;;future;21/10/2026
