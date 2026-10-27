@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_5c6c99d576ab02b48673eec4c4ddf16c {
+                #map_5421e1b867710b690327cf32d72c766d {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,14 +39,14 @@
 <body>
     
     
-            <div class="folium-map" id="map_5c6c99d576ab02b48673eec4c4ddf16c" ></div>
+            <div class="folium-map" id="map_5421e1b867710b690327cf32d72c766d" ></div>
         
 </body>
 <script>
     
     
-            var map_5c6c99d576ab02b48673eec4c4ddf16c = L.map(
-                "map_5c6c99d576ab02b48673eec4c4ddf16c",
+            var map_5421e1b867710b690327cf32d72c766d = L.map(
+                "map_5421e1b867710b690327cf32d72c766d",
                 {
                     center: [46.5, 2.5],
                     crs: L.CRS.EPSG3857,
@@ -64,7 +64,7 @@
 
         
     
-            var tile_layer_3c7263bff7ae16d058bf79c68a92a84c = L.tileLayer(
+            var tile_layer_e9839553dc66777ff79aa6a1e4538109 = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -81,19 +81,59 @@
             );
         
     
-            tile_layer_3c7263bff7ae16d058bf79c68a92a84c.addTo(map_5c6c99d576ab02b48673eec4c4ddf16c);
+            tile_layer_e9839553dc66777ff79aa6a1e4538109.addTo(map_5421e1b867710b690327cf32d72c766d);
         
     
-            var marker_c21457c9d4171d986ca95e149fa5ff0a = L.marker(
-                [50.02207706863071, 1.321483101562566],
+            var marker_60e5f4157ca5392280a5a1b88740cb85 = L.marker(
+                [44.58602243937076, -1.1808809093352457],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_5c6c99d576ab02b48673eec4c4ddf16c);
+            ).addTo(map_5421e1b867710b690327cf32d72c766d);
         
     
-            var icon_dd54186ed27dfdaf3d5610e50deabd53 = L.AwesomeMarkers.icon(
+            var icon_48ff01c2fdc23475930474c6c88000b4 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_60e5f4157ca5392280a5a1b88740cb85.setIcon(icon_48ff01c2fdc23475930474c6c88000b4);
+        
+    
+        var popup_d635989efa7cb7c324554f440ece1cc3 = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_c57a084f835efe784112fd851ac27d00 = $(`<div id="html_c57a084f835efe784112fd851ac27d00" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>📆 Rente : 643.0 €/mois<br>💼 Bouquet : 127200.0 €<br>👴 Age : 75.0 ans<br>📍 CP : 33260<br><br>📝 43 % de décote Viager occupé Ref. : 422633298 Maison - 4 pièces - 86m² La Teste-de-Buch (33260) Homme, 75 ans Bouquet FAI 127 200 € Rente 643 €/mois V<br><br><a href="https://www.costes-viager.com/acheter/gironde-33/teste-de-buch/maison-4pieces-422633298" target="_blank">Voir annonce</a></div>`)[0];
+                popup_d635989efa7cb7c324554f440ece1cc3.setContent(html_c57a084f835efe784112fd851ac27d00);
+            
+        
+
+        marker_60e5f4157ca5392280a5a1b88740cb85.bindPopup(popup_d635989efa7cb7c324554f440ece1cc3)
+        ;
+
+        
+    
+    
+            var marker_81e039f5888857c11e16dda77f779794 = L.marker(
+                [48.84712832065031, 2.4382853918095577],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_5421e1b867710b690327cf32d72c766d);
+        
+    
+            var icon_2ef63182aae9fd7e1b3dd1dc3ed15ac5 = L.AwesomeMarkers.icon(
                 {
   "markerColor": "purple",
   "iconColor": "white",
@@ -102,10 +142,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_c21457c9d4171d986ca95e149fa5ff0a.setIcon(icon_dd54186ed27dfdaf3d5610e50deabd53);
+            marker_81e039f5888857c11e16dda77f779794.setIcon(icon_2ef63182aae9fd7e1b3dd1dc3ed15ac5);
         
     
-        var popup_b2083deb7ea89a6b677b59acbd6211be = L.popup({
+        var popup_b05764c5a04dea5d8d9987c454c0ce6b = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -113,27 +153,27 @@
 
         
             
-                var html_00418000f8a9a5f6f3c398d8f3ff63fa = $(`<div id="html_00418000f8a9a5f6f3c398d8f3ff63fa" style="width: 100.0%; height: 100.0%;"><b>vench — Maison</b><br><br>💰 Prix : 45000.0 €<br>📅 Vente : 02/12/2026<br>📍 CP : 76910<br><br>📝 UNE MAISON D'HABITATION • Criel-sur-Mer<br><br><a href="https://www.vench.fr/vente-167003-une-maison-d-habitation-criel-sur-mer.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_b2083deb7ea89a6b677b59acbd6211be.setContent(html_00418000f8a9a5f6f3c398d8f3ff63fa);
+                var html_cd935dbd133c44586a81338f6b751513 = $(`<div id="html_cd935dbd133c44586a81338f6b751513" style="width: 100.0%; height: 100.0%;"><b>vench — Maison</b><br><br>💰 Prix : 145000.0 €<br>📐 Surface : 215,96 m²<br>📅 Vente : 10/12/2026<br>📍 CP : 94300<br><br>📝 UNE MAISON D'HABITATION • 215,96m² • Vincennes<br><br><a href="https://www.vench.fr/vente-167013-une-maison-d-habitation-vincennes.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_b05764c5a04dea5d8d9987c454c0ce6b.setContent(html_cd935dbd133c44586a81338f6b751513);
             
         
 
-        marker_c21457c9d4171d986ca95e149fa5ff0a.bindPopup(popup_b2083deb7ea89a6b677b59acbd6211be)
+        marker_81e039f5888857c11e16dda77f779794.bindPopup(popup_b05764c5a04dea5d8d9987c454c0ce6b)
         ;
 
         
     
     
-            var marker_2dedbcebe3e637ebf14185e155aab941 = L.marker(
-                [43.54531129584935, 7.015418162680283],
+            var marker_247043d7d4c4d3b8967a3b4bb63e04f7 = L.marker(
+                [44.86288358383767, -0.583607252369566],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_5c6c99d576ab02b48673eec4c4ddf16c);
+            ).addTo(map_5421e1b867710b690327cf32d72c766d);
         
     
-            var icon_083364ccc23a3b2e1fb78515e7aab5ef = L.AwesomeMarkers.icon(
+            var icon_68bdf58f6966283df60d7e2ee84dbfe0 = L.AwesomeMarkers.icon(
                 {
   "markerColor": "purple",
   "iconColor": "white",
@@ -142,10 +182,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_2dedbcebe3e637ebf14185e155aab941.setIcon(icon_083364ccc23a3b2e1fb78515e7aab5ef);
+            marker_247043d7d4c4d3b8967a3b4bb63e04f7.setIcon(icon_68bdf58f6966283df60d7e2ee84dbfe0);
         
     
-        var popup_095176174ffbfa590295ed1959acc693 = L.popup({
+        var popup_5006e515e2aeaaf63887f23965e15f1c = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -153,67 +193,27 @@
 
         
             
-                var html_14fe7976d09b3d9518800bec5a2329ef = $(`<div id="html_14fe7976d09b3d9518800bec5a2329ef" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 90000.0 €<br>📐 Surface : 63,05 m²<br>📅 Vente : 03/12/2026<br>📍 CP : 06400<br><br>📝 UN APPARTEMENT ET UNE MANSARDE • 63,05m² • Cannes<br><br><a href="https://www.vench.fr/vente-166995-un-appartement-et-une-mansarde-cannes.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_095176174ffbfa590295ed1959acc693.setContent(html_14fe7976d09b3d9518800bec5a2329ef);
+                var html_115759f13a63b218e86e04a841c7443f = $(`<div id="html_115759f13a63b218e86e04a841c7443f" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 25000.0 €<br>📅 Vente : 03/12/2026<br>📍 CP : 33000<br><br>📝 UN STUDIO • Bordeaux<br><br><a href="https://www.vench.fr/vente-167015-un-studio-bordeaux.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_5006e515e2aeaaf63887f23965e15f1c.setContent(html_115759f13a63b218e86e04a841c7443f);
             
         
 
-        marker_2dedbcebe3e637ebf14185e155aab941.bindPopup(popup_095176174ffbfa590295ed1959acc693)
+        marker_247043d7d4c4d3b8967a3b4bb63e04f7.bindPopup(popup_5006e515e2aeaaf63887f23965e15f1c)
         ;
 
         
     
     
-            var marker_5d83e5bd7291eb72b12fd150f520b1d4 = L.marker(
-                [42.53003581083215, 3.023365709865298],
+            var marker_016682a649456a9f4a881f2aa37ddcf8 = L.marker(
+                [48.84712832065031, 2.4382853918095577],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_5c6c99d576ab02b48673eec4c4ddf16c);
+            ).addTo(map_5421e1b867710b690327cf32d72c766d);
         
     
-            var icon_2918ed1c508e9ed3cab2e4d43d1b100d = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "home",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_5d83e5bd7291eb72b12fd150f520b1d4.setIcon(icon_2918ed1c508e9ed3cab2e4d43d1b100d);
-        
-    
-        var popup_1940a4e1ae8976515da26de10dd028d2 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_4febc77a1b800949a80e12b31f1496cf = $(`<div id="html_4febc77a1b800949a80e12b31f1496cf" style="width: 100.0%; height: 100.0%;"><b>vench — Autre</b><br><br>💰 Prix : 4000.0 €<br>📐 Surface : 22,76 m²<br>📅 Vente : 11/12/2026<br>📍 CP : 66700<br><br>📝 UNE CHAMBRE D’HÔTEL DE 22,76 M² • Argelès-sur-Mer<br><br><a href="https://www.vench.fr/vente-166994-une-chambre-dhotel-de-2276-m-argeles-sur-mer.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_1940a4e1ae8976515da26de10dd028d2.setContent(html_4febc77a1b800949a80e12b31f1496cf);
-            
-        
-
-        marker_5d83e5bd7291eb72b12fd150f520b1d4.bindPopup(popup_1940a4e1ae8976515da26de10dd028d2)
-        ;
-
-        
-    
-    
-            var marker_aa3756c05f885ffba2ab28debf11cafd = L.marker(
-                [45.55283575751087, 5.9387641694933615],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_5c6c99d576ab02b48673eec4c4ddf16c);
-        
-    
-            var icon_55ae395474a8316a898729f4ec8b6c64 = L.AwesomeMarkers.icon(
+            var icon_21b905c5cd52c3bfcae20d6904b636d7 = L.AwesomeMarkers.icon(
                 {
   "markerColor": "purple",
   "iconColor": "white",
@@ -222,10 +222,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_aa3756c05f885ffba2ab28debf11cafd.setIcon(icon_55ae395474a8316a898729f4ec8b6c64);
+            marker_016682a649456a9f4a881f2aa37ddcf8.setIcon(icon_21b905c5cd52c3bfcae20d6904b636d7);
         
     
-        var popup_fa3e18426f4e63e32981e0d898f2c223 = L.popup({
+        var popup_08650360b4a8ff5b734ae87414ca3652 = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -233,52 +233,12 @@
 
         
             
-                var html_4675864ec3b2828fbbeb18ff3809c0c9 = $(`<div id="html_4675864ec3b2828fbbeb18ff3809c0c9" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 95000.0 €<br>📅 Vente : 10/11/2026<br>📍 CP : 73000<br><br>📝 UN APPARTEMENT DE TYPE T4 • Chambéry<br><br><a href="https://www.vench.fr/vente-166978-un-appartement-de-type-t4-chambery.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_fa3e18426f4e63e32981e0d898f2c223.setContent(html_4675864ec3b2828fbbeb18ff3809c0c9);
+                var html_e760e60f764f037a627e5377badad360 = $(`<div id="html_e760e60f764f037a627e5377badad360" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 240000.0 €<br>📐 Surface : 51,45 m²<br>📅 Vente : 10/12/2026<br>📍 CP : 94300<br><br>📝 UN APPARTEMENT • 51,45m² • Vincennes<br><br><a href="https://www.vench.fr/vente-167012-un-appartement-vincennes.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_08650360b4a8ff5b734ae87414ca3652.setContent(html_e760e60f764f037a627e5377badad360);
             
         
 
-        marker_aa3756c05f885ffba2ab28debf11cafd.bindPopup(popup_fa3e18426f4e63e32981e0d898f2c223)
-        ;
-
-        
-    
-    
-            var marker_17f1dcadff35d5a98192e99595186dd4 = L.marker(
-                [48.82289572162378, 2.405017267026209],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_5c6c99d576ab02b48673eec4c4ddf16c);
-        
-    
-            var icon_af411afd4426b94a1be411d677dd70d8 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "building",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_17f1dcadff35d5a98192e99595186dd4.setIcon(icon_af411afd4426b94a1be411d677dd70d8);
-        
-    
-        var popup_49b683d62de0cc4c03e35a1cb2dab29a = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_9d1e65ed63aad0750ea1a34990ee5ed3 = $(`<div id="html_9d1e65ed63aad0750ea1a34990ee5ed3" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 22000.0 €<br>📐 Surface : 168,55 m²<br>📅 Vente : 10/12/2026<br>📍 CP : 94220<br><br>📝 3 LOGEMENTS et UNE PIÈCE • 168,55m² • Charenton-le-Pont<br><br><a href="https://www.vench.fr/vente-166945-3-logements-et-une-piece-charenton-le-pont.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_49b683d62de0cc4c03e35a1cb2dab29a.setContent(html_9d1e65ed63aad0750ea1a34990ee5ed3);
-            
-        
-
-        marker_17f1dcadff35d5a98192e99595186dd4.bindPopup(popup_49b683d62de0cc4c03e35a1cb2dab29a)
+        marker_016682a649456a9f4a881f2aa37ddcf8.bindPopup(popup_08650360b4a8ff5b734ae87414ca3652)
         ;
 
         
