@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_129258193e7138036068ecb2b5870216 {
+                #map_7a1d4023d383c1e891421dd76e853550 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,14 +39,14 @@
 <body>
     
     
-            <div class="folium-map" id="map_129258193e7138036068ecb2b5870216" ></div>
+            <div class="folium-map" id="map_7a1d4023d383c1e891421dd76e853550" ></div>
         
 </body>
 <script>
     
     
-            var map_129258193e7138036068ecb2b5870216 = L.map(
-                "map_129258193e7138036068ecb2b5870216",
+            var map_7a1d4023d383c1e891421dd76e853550 = L.map(
+                "map_7a1d4023d383c1e891421dd76e853550",
                 {
                     center: [46.5, 2.5],
                     crs: L.CRS.EPSG3857,
@@ -64,7 +64,7 @@
 
         
     
-            var tile_layer_0553763232b901c52899f7a274bdb6b5 = L.tileLayer(
+            var tile_layer_9f6df41c5b95eadcd13f0e481278f03a = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -81,19 +81,99 @@
             );
         
     
-            tile_layer_0553763232b901c52899f7a274bdb6b5.addTo(map_129258193e7138036068ecb2b5870216);
+            tile_layer_9f6df41c5b95eadcd13f0e481278f03a.addTo(map_7a1d4023d383c1e891421dd76e853550);
         
     
-            var marker_c718034cfe59e62543e6ebcefba435f3 = L.marker(
-                [48.37129847026718, -4.653338713775918],
+            var marker_28ebf04de46230b0a797d63c5af99e59 = L.marker(
+                [43.67123166800276, 7.150153357560419],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_129258193e7138036068ecb2b5870216);
+            ).addTo(map_7a1d4023d383c1e891421dd76e853550);
         
     
-            var icon_5ba8faa54a450ea3aa7a1c1431bd0f98 = L.AwesomeMarkers.icon(
+            var icon_7db579c5ed24b55d16c758de5a8ea78c = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "building",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_28ebf04de46230b0a797d63c5af99e59.setIcon(icon_7db579c5ed24b55d16c758de5a8ea78c);
+        
+    
+        var popup_fbe955260eee0de8fe7237cf721b5179 = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_5f899958587dd6fd3da118f5b12d8674 = $(`<div id="html_5f899958587dd6fd3da118f5b12d8674" style="width: 100.0%; height: 100.0%;"><b>costes — Appartement</b><br><br>📆 Rente : 211.0 €/mois<br>💼 Bouquet : 77575.0 €<br>👴 Age : 71.0 ans<br>📍 CP : 06800<br><br>📝 Viager occupé Ref. : 422606199 Appartement - 2 pièces - 53m² Cagnes-sur-Mer (06800) Homme, 71 ans Bouquet FAI 77 575 € Rente 211 €/mois Valeur du bien<br><br><a href="https://www.costes-viager.com/acheter/alpes-maritimes-06/cagnes-sur-mer/appartement-2pieces-422606199" target="_blank">Voir annonce</a></div>`)[0];
+                popup_fbe955260eee0de8fe7237cf721b5179.setContent(html_5f899958587dd6fd3da118f5b12d8674);
+            
+        
+
+        marker_28ebf04de46230b0a797d63c5af99e59.bindPopup(popup_fbe955260eee0de8fe7237cf721b5179)
+        ;
+
+        
+    
+    
+            var marker_53a208d27b297c67fbf91f84cf9d916a = L.marker(
+                [48.11593433597513, -1.6884435267237876],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_7a1d4023d383c1e891421dd76e853550);
+        
+    
+            var icon_d4317e0ce1ec63f21f9753a5e3ef17c1 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "building",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_53a208d27b297c67fbf91f84cf9d916a.setIcon(icon_d4317e0ce1ec63f21f9753a5e3ef17c1);
+        
+    
+        var popup_9c5d8f980ffc9bb9c8181414be38957a = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_142929d0f1cda37d488c78d4ab77fd26 = $(`<div id="html_142929d0f1cda37d488c78d4ab77fd26" style="width: 100.0%; height: 100.0%;"><b>costes — Appartement</b><br><br>📆 Rente : 1181.0 €/mois<br>💼 Bouquet : 136640.0 €<br>📍 CP : 35200<br><br>📝 Viager libre Ref. : 422535052 Appartement - 4 pièces - 103m² Rennes (35200) Bouquet FAI 136 640 € Rente 1 181 €/mois Valeur du bien 210 000 € Plus de <br><br><a href="https://www.costes-viager.com/acheter/ille-et-vilaine-35/rennes/appartement-4pieces-422535052" target="_blank">Voir annonce</a></div>`)[0];
+                popup_9c5d8f980ffc9bb9c8181414be38957a.setContent(html_142929d0f1cda37d488c78d4ab77fd26);
+            
+        
+
+        marker_53a208d27b297c67fbf91f84cf9d916a.bindPopup(popup_9c5d8f980ffc9bb9c8181414be38957a)
+        ;
+
+        
+    
+    
+            var marker_ef2163e1f03ad54ecd0687f4834c58a2 = L.marker(
+                [45.33775193579951, -1.0953312117244964],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_7a1d4023d383c1e891421dd76e853550);
+        
+    
+            var icon_6a5406712902187688c8a9af408e6700 = L.AwesomeMarkers.icon(
                 {
   "markerColor": "blue",
   "iconColor": "white",
@@ -102,10 +182,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_c718034cfe59e62543e6ebcefba435f3.setIcon(icon_5ba8faa54a450ea3aa7a1c1431bd0f98);
+            marker_ef2163e1f03ad54ecd0687f4834c58a2.setIcon(icon_6a5406712902187688c8a9af408e6700);
         
     
-        var popup_4d7d5a14b85e7d5fd95b3c2eb070a96b = L.popup({
+        var popup_f0bab12fb742536db61b7ffb93c99318 = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -113,27 +193,27 @@
 
         
             
-                var html_a1dbd536904cb28218d14e2ca15d5f6b = $(`<div id="html_a1dbd536904cb28218d14e2ca15d5f6b" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>📆 Rente : 1767.0 €/mois<br>💼 Bouquet : 80400.0 €<br>👴 Age : 79.0 ans<br>📍 CP : 29280<br><br>📝 31 % de décote Viager occupé Ref. : 422529127 Maison - 6 pièces - 174m² Locmaria-Plouzané (29280) Homme, 79 ans Bouquet FAI 80 400 € Rente 1 767 €/moi<br><br><a href="https://www.costes-viager.com/acheter/finistere-29/locmaria-plouzane/maison-6pieces-422529127" target="_blank">Voir annonce</a></div>`)[0];
-                popup_4d7d5a14b85e7d5fd95b3c2eb070a96b.setContent(html_a1dbd536904cb28218d14e2ca15d5f6b);
+                var html_1857da237bb5f791eec68a154372b696 = $(`<div id="html_1857da237bb5f791eec68a154372b696" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>💼 Bouquet : 99625.0 €<br>📍 CP : 33930<br><br>📝 Vente à terme libre Ref. : 422433475 Maison - 3 pièces - 105m² Vendays-Montalivet (33930) Bouquet FAI 99 625 € Mensualités 2 708 €/mois Prix d'achat (<br><br><a href="https://www.costes-viager.com/acheter/gironde-33/vendays-montalivet/maison-3pieces-422433475" target="_blank">Voir annonce</a></div>`)[0];
+                popup_f0bab12fb742536db61b7ffb93c99318.setContent(html_1857da237bb5f791eec68a154372b696);
             
         
 
-        marker_c718034cfe59e62543e6ebcefba435f3.bindPopup(popup_4d7d5a14b85e7d5fd95b3c2eb070a96b)
+        marker_ef2163e1f03ad54ecd0687f4834c58a2.bindPopup(popup_f0bab12fb742536db61b7ffb93c99318)
         ;
 
         
     
     
-            var marker_8ca8dca3b0f52be47416be28bf4581d0 = L.marker(
-                [48.788442174830266, -3.538976697015584],
+            var marker_dc318d88a6cc650447b641757b2c1b83 = L.marker(
+                [48.82233002286701, -3.301594020790901],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_129258193e7138036068ecb2b5870216);
+            ).addTo(map_7a1d4023d383c1e891421dd76e853550);
         
     
-            var icon_236e78fb03aa95b7d5d5edb2c1b3dc47 = L.AwesomeMarkers.icon(
+            var icon_136312eaf348c1937a831f682d24d8a5 = L.AwesomeMarkers.icon(
                 {
   "markerColor": "blue",
   "iconColor": "white",
@@ -142,10 +222,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_8ca8dca3b0f52be47416be28bf4581d0.setIcon(icon_236e78fb03aa95b7d5d5edb2c1b3dc47);
+            marker_dc318d88a6cc650447b641757b2c1b83.setIcon(icon_136312eaf348c1937a831f682d24d8a5);
         
     
-        var popup_874b439b391bebb737febc7179621ce6 = L.popup({
+        var popup_4866291ac59033ff4702af5b09d7d676 = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -153,67 +233,27 @@
 
         
             
-                var html_908820f6eb82835ebe29438151e571f4 = $(`<div id="html_908820f6eb82835ebe29438151e571f4" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>📆 Rente : 600.0 €/mois<br>💼 Bouquet : 62100.0 €<br>👴 Age : 72.0 ans<br>📍 CP : 22560<br><br>📝 47 % de décote Viager occupé Ref. : 422622086 Maison - 5 pièces - 100m² Pleumeur-Bodou (22560) Homme, 72 ans Bouquet FAI 62 100 € Rente 600 €/mois Val<br><br><a href="https://www.costes-viager.com/acheter/cotes-darmor-22/pleumeur-bodou/maison-5pieces-422622086" target="_blank">Voir annonce</a></div>`)[0];
-                popup_874b439b391bebb737febc7179621ce6.setContent(html_908820f6eb82835ebe29438151e571f4);
+                var html_b35281b1dbe3ef7937a953c711342c4d = $(`<div id="html_b35281b1dbe3ef7937a953c711342c4d" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>📆 Rente : 1041.0 €/mois<br>💼 Bouquet : 134800.0 €<br>👴 Age : 84.0 ans<br>📍 CP : 22710<br><br>📝 32 % de décote Viager occupé Ref. : 422522027 Maison - 4 pièces - 95m² Penvénan (22710) Homme, 84 ans Bouquet FAI 134 800 € Rente 1 041 €/mois Valeur <br><br><a href="https://www.costes-viager.com/acheter/cotes-darmor-22/penvenan/maison-4pieces-422522027" target="_blank">Voir annonce</a></div>`)[0];
+                popup_4866291ac59033ff4702af5b09d7d676.setContent(html_b35281b1dbe3ef7937a953c711342c4d);
             
         
 
-        marker_8ca8dca3b0f52be47416be28bf4581d0.bindPopup(popup_874b439b391bebb737febc7179621ce6)
+        marker_dc318d88a6cc650447b641757b2c1b83.bindPopup(popup_4866291ac59033ff4702af5b09d7d676)
         ;
 
         
     
     
-            var marker_76f873a398d22408cbef85dde38cee8f = L.marker(
-                [47.87341730792261, 1.9121950351645955],
+            var marker_1e0ac0cbe0c1272065c497df6b929259 = L.marker(
+                [48.82289572162378, 2.405017267026209],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_129258193e7138036068ecb2b5870216);
+            ).addTo(map_7a1d4023d383c1e891421dd76e853550);
         
     
-            var icon_0b5e7feada3eba66999a623fdc6ceec8 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "building",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_76f873a398d22408cbef85dde38cee8f.setIcon(icon_0b5e7feada3eba66999a623fdc6ceec8);
-        
-    
-        var popup_a4dcfa9d5c4b0f64a92ee67735dafb32 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_ebf589341e9ede7b6c21986bed669bfc = $(`<div id="html_ebf589341e9ede7b6c21986bed669bfc" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 20000.0 €<br>📅 Vente : 18/12/2026<br>📍 CP : 45100<br><br>📝 UN APPARTEMENT AVEC UNE CAVE ET UN PARKING • Orléans<br><br><a href="https://www.vench.fr/vente-167052-un-appartement-avec-une-cave-et-un-parking-orleans.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_a4dcfa9d5c4b0f64a92ee67735dafb32.setContent(html_ebf589341e9ede7b6c21986bed669bfc);
-            
-        
-
-        marker_76f873a398d22408cbef85dde38cee8f.bindPopup(popup_a4dcfa9d5c4b0f64a92ee67735dafb32)
-        ;
-
-        
-    
-    
-            var marker_ff7f98f53ffc8c218641d085d6caf7d2 = L.marker(
-                [43.2115195996737, 6.641973093139233],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_129258193e7138036068ecb2b5870216);
-        
-    
-            var icon_9355a653cb82f3c08930bccc9d6970b1 = L.AwesomeMarkers.icon(
+            var icon_570f1215b2a72234823fc5750dd01b1d = L.AwesomeMarkers.icon(
                 {
   "markerColor": "purple",
   "iconColor": "white",
@@ -222,10 +262,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_ff7f98f53ffc8c218641d085d6caf7d2.setIcon(icon_9355a653cb82f3c08930bccc9d6970b1);
+            marker_1e0ac0cbe0c1272065c497df6b929259.setIcon(icon_570f1215b2a72234823fc5750dd01b1d);
         
     
-        var popup_b797664516bd510ed5efba5553dccb8e = L.popup({
+        var popup_5410f65658d21f7f299caf766214b5a5 = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -233,132 +273,12 @@
 
         
             
-                var html_329d415635bd47d77c44044200f3521b = $(`<div id="html_329d415635bd47d77c44044200f3521b" style="width: 100.0%; height: 100.0%;"><b>vench — Maison</b><br><br>💰 Prix : 450000.0 €<br>📐 Surface : 127,51 m²<br>📅 Vente : 04/12/2026<br>📍 CP : 83350<br><br>📝 UNE MAISON ET UN GARAGE • 127,51m² • Ramatuelle<br><br><a href="https://www.vench.fr/vente-167051-une-maison-et-un-garage-ramatuelle.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_b797664516bd510ed5efba5553dccb8e.setContent(html_329d415635bd47d77c44044200f3521b);
+                var html_c49531506b36d69a8386e7163e36b88a = $(`<div id="html_c49531506b36d69a8386e7163e36b88a" style="width: 100.0%; height: 100.0%;"><b>vench — Autre</b><br><br>💰 Prix : 22000.0 €<br>📐 Surface : 168,55 m²<br>📅 Vente : 10/12/2026<br>📍 CP : 94220<br><br>📝 UNE CAVE et DEUX REMISES • 168,55m² • Charenton-le-Pont<br><br><a href="https://www.vench.fr/vente-167065-une-cave-et-deux-remises-charenton-le-pont.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_5410f65658d21f7f299caf766214b5a5.setContent(html_c49531506b36d69a8386e7163e36b88a);
             
         
 
-        marker_ff7f98f53ffc8c218641d085d6caf7d2.bindPopup(popup_b797664516bd510ed5efba5553dccb8e)
-        ;
-
-        
-    
-    
-            var marker_266371e04dc75d95d51ce1097306c7e2 = L.marker(
-                [43.60070327269143, 1.432842540658348],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_129258193e7138036068ecb2b5870216);
-        
-    
-            var icon_c9fe5344449ab088e59dd61a6a63e6fb = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "home",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_266371e04dc75d95d51ce1097306c7e2.setIcon(icon_c9fe5344449ab088e59dd61a6a63e6fb);
-        
-    
-        var popup_a1e910f4e3f82fd7d2845b69d36e9cc2 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_170d86943ee4f8e532aea4a7181c34fb = $(`<div id="html_170d86943ee4f8e532aea4a7181c34fb" style="width: 100.0%; height: 100.0%;"><b>vench — Maison</b><br><br>💰 Prix : 465000.0 €<br>📅 Vente : 03/12/2026<br>📍 CP : 31400<br><br>📝 UNE MAISON D’HABITATION • Toulouse<br><br><a href="https://www.vench.fr/vente-167037-une-maison-dhabitation-toulouse.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_a1e910f4e3f82fd7d2845b69d36e9cc2.setContent(html_170d86943ee4f8e532aea4a7181c34fb);
-            
-        
-
-        marker_266371e04dc75d95d51ce1097306c7e2.bindPopup(popup_a1e910f4e3f82fd7d2845b69d36e9cc2)
-        ;
-
-        
-    
-    
-            var marker_9618f767a0db16463d2823ef9335bf4e = L.marker(
-                [48.84558449060678, -1.527979798949913],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_129258193e7138036068ecb2b5870216);
-        
-    
-            var icon_7a7c860e591b1504e0301b4e9ad79929 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "home",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_9618f767a0db16463d2823ef9335bf4e.setIcon(icon_7a7c860e591b1504e0301b4e9ad79929);
-        
-    
-        var popup_bc8e73ba6cda26e555891f4e0368bc31 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_de6191685a9a944960d588c01bbf878c = $(`<div id="html_de6191685a9a944960d588c01bbf878c" style="width: 100.0%; height: 100.0%;"><b>vench — Maison</b><br><br>💰 Prix : 50000.0 €<br>📐 Surface : 166,79 m²<br>📅 Vente : 15/12/2026<br>📍 CP : 50400<br><br>📝 UNE MAISON D'HABITATION • 166,79m² • Saint-Planchers<br><br><a href="https://www.vench.fr/vente-167043-une-maison-d-habitation-saint-planchers.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_bc8e73ba6cda26e555891f4e0368bc31.setContent(html_de6191685a9a944960d588c01bbf878c);
-            
-        
-
-        marker_9618f767a0db16463d2823ef9335bf4e.bindPopup(popup_bc8e73ba6cda26e555891f4e0368bc31)
-        ;
-
-        
-    
-    
-            var marker_553ffb058400c47fd103644d241e38ae = L.marker(
-                [43.60070327269143, 1.432842540658348],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_129258193e7138036068ecb2b5870216);
-        
-    
-            var icon_4867370aba597ddda633a1bc815def74 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "building",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_553ffb058400c47fd103644d241e38ae.setIcon(icon_4867370aba597ddda633a1bc815def74);
-        
-    
-        var popup_b071316de0850015d99dcdc0e857c070 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_d501e86a4686a814eda2af68096ef406 = $(`<div id="html_d501e86a4686a814eda2af68096ef406" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 6000.0 €<br>📅 Vente : 10/12/2026<br>📍 CP : 31000<br><br>📝 UN APPARTEMENT T1 ET UN CELLIER • Toulouse<br><br><a href="https://www.vench.fr/vente-167039-un-appartement-t1-et-un-cellier-toulouse.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_b071316de0850015d99dcdc0e857c070.setContent(html_d501e86a4686a814eda2af68096ef406);
-            
-        
-
-        marker_553ffb058400c47fd103644d241e38ae.bindPopup(popup_b071316de0850015d99dcdc0e857c070)
+        marker_1e0ac0cbe0c1272065c497df6b929259.bindPopup(popup_5410f65658d21f7f299caf766214b5a5)
         ;
 
         
