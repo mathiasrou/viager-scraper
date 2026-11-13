@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_fc44e3cf9d2a6f7b1a7183e15f073652 {
+                #map_efaca68b31a8492fbaf66c84a8c273b0 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,14 +39,14 @@
 <body>
     
     
-            <div class="folium-map" id="map_fc44e3cf9d2a6f7b1a7183e15f073652" ></div>
+            <div class="folium-map" id="map_efaca68b31a8492fbaf66c84a8c273b0" ></div>
         
 </body>
 <script>
     
     
-            var map_fc44e3cf9d2a6f7b1a7183e15f073652 = L.map(
-                "map_fc44e3cf9d2a6f7b1a7183e15f073652",
+            var map_efaca68b31a8492fbaf66c84a8c273b0 = L.map(
+                "map_efaca68b31a8492fbaf66c84a8c273b0",
                 {
                     center: [46.5, 2.5],
                     crs: L.CRS.EPSG3857,
@@ -64,7 +64,7 @@
 
         
     
-            var tile_layer_78056c61b89964d90523ddacccd83013 = L.tileLayer(
+            var tile_layer_e777f32fe33aaced24036c26fbe70837 = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -81,31 +81,151 @@
             );
         
     
-            tile_layer_78056c61b89964d90523ddacccd83013.addTo(map_fc44e3cf9d2a6f7b1a7183e15f073652);
+            tile_layer_e777f32fe33aaced24036c26fbe70837.addTo(map_efaca68b31a8492fbaf66c84a8c273b0);
         
     
-            var marker_4c178f4c5ab5293768806afd4f121efc = L.marker(
+            var marker_9683ccd56ce7c936777aab35ab6ea829 = L.marker(
+                [47.65770026522876, -2.7484511547837647],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_efaca68b31a8492fbaf66c84a8c273b0);
+        
+    
+            var icon_fda881a0057397eb062df7add7f702e2 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_9683ccd56ce7c936777aab35ab6ea829.setIcon(icon_fda881a0057397eb062df7add7f702e2);
+        
+    
+        var popup_61e919a1087968fff7961c15098ed946 = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_27af007fb11f0043bca8f4da5357e9d1 = $(`<div id="html_27af007fb11f0043bca8f4da5357e9d1" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>📆 Rente : 1241.0 €/mois<br>💼 Bouquet : 64900.0 €<br>👴 Age : 70.0 ans<br>📍 CP : 56000<br><br>📝 49 % de décote Viager occupé Ref. : 422556019 Maison - 4 pièces - 115m² proche de Vannes (56000) Homme, 70 ans Bouquet FAI 64 900 € Rente 1 241 €/mois<br><br><a href="https://www.costes-viager.com/acheter/morbihan-56/sene/maison-4pieces-422556019" target="_blank">Voir annonce</a></div>`)[0];
+                popup_61e919a1087968fff7961c15098ed946.setContent(html_27af007fb11f0043bca8f4da5357e9d1);
+            
+        
+
+        marker_9683ccd56ce7c936777aab35ab6ea829.bindPopup(popup_61e919a1087968fff7961c15098ed946)
+        ;
+
+        
+    
+    
+            var marker_f6c0a373097854a63d05112684efbbad = L.marker(
+                [43.61000816304725, 3.87416937209812],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_efaca68b31a8492fbaf66c84a8c273b0);
+        
+    
+            var icon_9358a6b737ff9eeddbf6dab2b1d09817 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_f6c0a373097854a63d05112684efbbad.setIcon(icon_9358a6b737ff9eeddbf6dab2b1d09817);
+        
+    
+        var popup_f51e2c0661ae6b373cca0f38b634c47a = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_b70679605627bedb2f205cf304bceb31 = $(`<div id="html_b70679605627bedb2f205cf304bceb31" style="width: 100.0%; height: 100.0%;"><b>encheres_immo — Autre</b><br><br>💰 Prix : 299000.0 €<br>📍 CP : 34000<br><br><a href="https://encheres-immo.com/annonce/vm2911-toctocfr-montpellier-34000-4997" target="_blank">Voir annonce</a></div>`)[0];
+                popup_f51e2c0661ae6b373cca0f38b634c47a.setContent(html_b70679605627bedb2f205cf304bceb31);
+            
+        
+
+        marker_f6c0a373097854a63d05112684efbbad.bindPopup(popup_f51e2c0661ae6b373cca0f38b634c47a)
+        ;
+
+        
+    
+    
+            var marker_556862c82299f99e3399f3d86d2ceaa7 = L.marker(
+                [50.67906233944304, 1.5788824451086994],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_efaca68b31a8492fbaf66c84a8c273b0);
+        
+    
+            var icon_e155b040669e544d5ffb3362112c947e = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "purple",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_556862c82299f99e3399f3d86d2ceaa7.setIcon(icon_e155b040669e544d5ffb3362112c947e);
+        
+    
+        var popup_190bbc91f276bffe6af67c1adc34bade = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_c79f300dabc7c369537411a088e694c9 = $(`<div id="html_c79f300dabc7c369537411a088e694c9" style="width: 100.0%; height: 100.0%;"><b>vench — Maison</b><br><br>💰 Prix : 80000.0 €<br>📅 Vente : 18/12/2026<br>📍 CP : 62224<br><br>📝 UNE MAISON À USAGE D'HABITATION • Equihen-Plage<br><br><a href="https://www.vench.fr/vente-167269-une-maison-a-usage-d-habitation-equihen-plage.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_190bbc91f276bffe6af67c1adc34bade.setContent(html_c79f300dabc7c369537411a088e694c9);
+            
+        
+
+        marker_556862c82299f99e3399f3d86d2ceaa7.bindPopup(popup_190bbc91f276bffe6af67c1adc34bade)
+        ;
+
+        
+    
+    
+            var marker_92e13a4fb712c12ba26c36e9684d265f = L.marker(
                 [47.23823282891702, -1.5603345123087684],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_fc44e3cf9d2a6f7b1a7183e15f073652);
+            ).addTo(map_efaca68b31a8492fbaf66c84a8c273b0);
         
     
-            var icon_0504bd39a8f5a4837bc2bbcfb5615a90 = L.AwesomeMarkers.icon(
+            var icon_ff425de556156d174f232da137a1f470 = L.AwesomeMarkers.icon(
                 {
-  "markerColor": "blue",
+  "markerColor": "purple",
   "iconColor": "white",
   "icon": "building",
   "prefix": "fa",
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_4c178f4c5ab5293768806afd4f121efc.setIcon(icon_0504bd39a8f5a4837bc2bbcfb5615a90);
+            marker_92e13a4fb712c12ba26c36e9684d265f.setIcon(icon_ff425de556156d174f232da137a1f470);
         
     
-        var popup_ba1834e63cf8f9a6ecce10983f9f4873 = L.popup({
+        var popup_5018e14bdb35ec582a958a038237030d = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -113,39 +233,39 @@
 
         
             
-                var html_1ad5520670e7c3744ff93a793e12acde = $(`<div id="html_1ad5520670e7c3744ff93a793e12acde" style="width: 100.0%; height: 100.0%;"><b>costes — Appartement</b><br><br>📆 Rente : 643.0 €/mois<br>💼 Bouquet : 16550.0 €<br>📍 CP : 44200<br><br>📝 Viager libre Ref. : 422644032 Appartement - 2 pièces - 37m² Nantes (44200) Bouquet FAI 16 550 € Rente 643 €/mois Valeur du bien 110 000 € Loyer garant<br><br><a href="https://www.costes-viager.com/acheter/loire-atlantique-44/nantes/appartement-2pieces-422644032" target="_blank">Voir annonce</a></div>`)[0];
-                popup_ba1834e63cf8f9a6ecce10983f9f4873.setContent(html_1ad5520670e7c3744ff93a793e12acde);
+                var html_a8deec6908b336db52f33324421a150c = $(`<div id="html_a8deec6908b336db52f33324421a150c" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 47300.0 €<br>📐 Surface : 19,77 m²<br>📅 Vente : 18/12/2026<br>📍 CP : 44000<br><br>📝 UN STUDIO ET UN PARKING • 19,77m² • Nantes<br><br><a href="https://www.vench.fr/vente-167264-un-studio-et-un-parking-nantes.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_5018e14bdb35ec582a958a038237030d.setContent(html_a8deec6908b336db52f33324421a150c);
             
         
 
-        marker_4c178f4c5ab5293768806afd4f121efc.bindPopup(popup_ba1834e63cf8f9a6ecce10983f9f4873)
+        marker_92e13a4fb712c12ba26c36e9684d265f.bindPopup(popup_5018e14bdb35ec582a958a038237030d)
         ;
 
         
     
     
-            var marker_1ff20f2ad25f97a5861c78e6d7ceb315 = L.marker(
-                [43.240625331256176, 6.531904967308256],
+            var marker_6b78fbc9f11672324439fe46df92211d = L.marker(
+                [44.20940613912036, -1.1919663311481186],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_fc44e3cf9d2a6f7b1a7183e15f073652);
+            ).addTo(map_efaca68b31a8492fbaf66c84a8c273b0);
         
     
-            var icon_fb7f7a2c41b15211fc96bbbb939ee594 = L.AwesomeMarkers.icon(
+            var icon_baaa62736c997c1cb8b9116dec6a9966 = L.AwesomeMarkers.icon(
                 {
-  "markerColor": "green",
+  "markerColor": "purple",
   "iconColor": "white",
   "icon": "building",
   "prefix": "fa",
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_1ff20f2ad25f97a5861c78e6d7ceb315.setIcon(icon_fb7f7a2c41b15211fc96bbbb939ee594);
+            marker_6b78fbc9f11672324439fe46df92211d.setIcon(icon_baaa62736c997c1cb8b9116dec6a9966);
         
     
-        var popup_a024929c6eeb5ce33ab2db38b88457d3 = L.popup({
+        var popup_77ce098655ea189184ea740325511f95 = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -153,27 +273,27 @@
 
         
             
-                var html_b032b29e044e617c439a031c46465b0e = $(`<div id="html_b032b29e044e617c439a031c46465b0e" style="width: 100.0%; height: 100.0%;"><b>encheres_immo — Appartement</b><br><br>💰 Prix : 380000.0 €<br>📍 CP : 83310<br><br><a href="https://encheres-immo.com/annonce/appartement-avec-vue-sur-les-canaux-et-amarrage-prive-grimaud-83310-3722" target="_blank">Voir annonce</a></div>`)[0];
-                popup_a024929c6eeb5ce33ab2db38b88457d3.setContent(html_b032b29e044e617c439a031c46465b0e);
+                var html_9d9309a06c7bb5d01863db6804f0649e = $(`<div id="html_9d9309a06c7bb5d01863db6804f0649e" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 17114.0 €<br>📐 Surface : 20,25 m²<br>📅 Vente : 10/12/2026<br>📍 CP : 40200<br><br>📝 UN STUDIO DE TYPE S3 • 20,25m² • Mimizan<br><br><a href="https://www.vench.fr/vente-167266-un-studio-de-type-s3-mimizan.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_77ce098655ea189184ea740325511f95.setContent(html_9d9309a06c7bb5d01863db6804f0649e);
             
         
 
-        marker_1ff20f2ad25f97a5861c78e6d7ceb315.bindPopup(popup_a024929c6eeb5ce33ab2db38b88457d3)
+        marker_6b78fbc9f11672324439fe46df92211d.bindPopup(popup_77ce098655ea189184ea740325511f95)
         ;
 
         
     
     
-            var marker_dd48c88450d5af7e6a3d9eeca77f38e4 = L.marker(
-                [49.259471852842864, -0.188703962393877],
+            var marker_00401b0a660d7d39350cff672938b651 = L.marker(
+                [47.23823282891702, -1.5603345123087684],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_fc44e3cf9d2a6f7b1a7183e15f073652);
+            ).addTo(map_efaca68b31a8492fbaf66c84a8c273b0);
         
     
-            var icon_26c14ff5fb67d02cf5c4c0d5c87d8739 = L.AwesomeMarkers.icon(
+            var icon_cff845a4c37d8e100ab8478918d69007 = L.AwesomeMarkers.icon(
                 {
   "markerColor": "purple",
   "iconColor": "white",
@@ -182,10 +302,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_dd48c88450d5af7e6a3d9eeca77f38e4.setIcon(icon_26c14ff5fb67d02cf5c4c0d5c87d8739);
+            marker_00401b0a660d7d39350cff672938b651.setIcon(icon_cff845a4c37d8e100ab8478918d69007);
         
     
-        var popup_53d339aafeb1164d0149ba661200637f = L.popup({
+        var popup_39c42425f169d4ea4b50b436efdf07c4 = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -193,172 +313,12 @@
 
         
             
-                var html_65c783165a8c4d79999327412eb1b832 = $(`<div id="html_65c783165a8c4d79999327412eb1b832" style="width: 100.0%; height: 100.0%;"><b>vench — Immeuble</b><br><br>💰 Prix : 150000.0 €<br>📅 Vente : 17/12/2026<br>📍 CP : 14810<br><br>📝 UNE GRANDE PROPRIÉTÉ • Merville-Franceville-Plage<br><br><a href="https://www.vench.fr/vente-167258-une-grande-propriete-merville-franceville-plage.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_53d339aafeb1164d0149ba661200637f.setContent(html_65c783165a8c4d79999327412eb1b832);
+                var html_96b589979a7146be66764113f2091837 = $(`<div id="html_96b589979a7146be66764113f2091837" style="width: 100.0%; height: 100.0%;"><b>vench — Immeuble</b><br><br>💰 Prix : 120000.0 €<br>📅 Vente : 18/12/2026<br>📍 CP : 44300<br><br>📝 UN IMMEUBLE À USAGE D'HABITATION • Nantes<br><br><a href="https://www.vench.fr/vente-167263-un-immeuble-a-usage-d-habitation-nantes.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_39c42425f169d4ea4b50b436efdf07c4.setContent(html_96b589979a7146be66764113f2091837);
             
         
 
-        marker_dd48c88450d5af7e6a3d9eeca77f38e4.bindPopup(popup_53d339aafeb1164d0149ba661200637f)
-        ;
-
-        
-    
-    
-            var marker_f828563bdd4e31fb6bcd8ee962bfce39 = L.marker(
-                [43.4892630358559, -1.51928783686524],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_fc44e3cf9d2a6f7b1a7183e15f073652);
-        
-    
-            var icon_8eb94bc011d6d9c72ec070ccedefd965 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "home",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_f828563bdd4e31fb6bcd8ee962bfce39.setIcon(icon_8eb94bc011d6d9c72ec070ccedefd965);
-        
-    
-        var popup_5179d5471095fee37fc509a6bcfb4862 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_38e986dfcf03351e80ce61ec1860d8fc = $(`<div id="html_38e986dfcf03351e80ce61ec1860d8fc" style="width: 100.0%; height: 100.0%;"><b>vench — Autre</b><br><br>💰 Prix : 190000.0 €<br>📅 Vente : 10/12/2026<br>📍 CP : 64600<br><br>📝 DES LOCAUX PROFESSIONNELS • Anglet<br><br><a href="https://www.vench.fr/vente-167257-des-locaux-professionnels-anglet.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_5179d5471095fee37fc509a6bcfb4862.setContent(html_38e986dfcf03351e80ce61ec1860d8fc);
-            
-        
-
-        marker_f828563bdd4e31fb6bcd8ee962bfce39.bindPopup(popup_5179d5471095fee37fc509a6bcfb4862)
-        ;
-
-        
-    
-    
-            var marker_d2f2105c3690c95c9dd45da68ff2e0dd = L.marker(
-                [48.61609618501187, -4.035744034426373],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_fc44e3cf9d2a6f7b1a7183e15f073652);
-        
-    
-            var icon_e8e767e98d0e945bc2e48d97ddc88857 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "home",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_d2f2105c3690c95c9dd45da68ff2e0dd.setIcon(icon_e8e767e98d0e945bc2e48d97ddc88857);
-        
-    
-        var popup_88a2741ee4d17672e40409e2048ea23d = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_27528c9c7fef35186b99fce477f786f6 = $(`<div id="html_27528c9c7fef35186b99fce477f786f6" style="width: 100.0%; height: 100.0%;"><b>vench — Maison</b><br><br>💰 Prix : 64000.0 €<br>📅 Vente : 01/12/2026<br>📍 CP : 29420<br><br>📝 UNE MAISON D'HABITATION • Plouénan<br><br><a href="https://www.vench.fr/vente-167252-une-maison-d-habitation-plouenan.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_88a2741ee4d17672e40409e2048ea23d.setContent(html_27528c9c7fef35186b99fce477f786f6);
-            
-        
-
-        marker_d2f2105c3690c95c9dd45da68ff2e0dd.bindPopup(popup_88a2741ee4d17672e40409e2048ea23d)
-        ;
-
-        
-    
-    
-            var marker_b1536219d9b4c4eb4e7dd30686198baf = L.marker(
-                [43.60070327269143, 1.432842540658348],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_fc44e3cf9d2a6f7b1a7183e15f073652);
-        
-    
-            var icon_08e09cf071c46ecff1048dacddccf550 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "building",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_b1536219d9b4c4eb4e7dd30686198baf.setIcon(icon_08e09cf071c46ecff1048dacddccf550);
-        
-    
-        var popup_e0befce748c52dc43e8931ca498ec867 = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_cf96291b4ca9d8d4a29caa4edd3ff09f = $(`<div id="html_cf96291b4ca9d8d4a29caa4edd3ff09f" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 75000.0 €<br>📅 Vente : 26/11/2026<br>📍 CP : 31000<br><br>📝 UN APPARTEMENT DE TYPE T4 • Toulouse<br><br><a href="https://www.vench.fr/vente-167247-un-appartement-de-type-t4-toulouse.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_e0befce748c52dc43e8931ca498ec867.setContent(html_cf96291b4ca9d8d4a29caa4edd3ff09f);
-            
-        
-
-        marker_b1536219d9b4c4eb4e7dd30686198baf.bindPopup(popup_e0befce748c52dc43e8931ca498ec867)
-        ;
-
-        
-    
-    
-            var marker_89a9ce1215cb3b907732a0c0b3b62fc7 = L.marker(
-                [43.44862110621408, 3.749253535131297],
-                {
-  "draggable": null,
-  "autoPan": null,
-}
-            ).addTo(map_fc44e3cf9d2a6f7b1a7183e15f073652);
-        
-    
-            var icon_fc829bc25a68d1c45cc21c15ee5fefbb = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "purple",
-  "iconColor": "white",
-  "icon": "leaf",
-  "prefix": "fa",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-            marker_89a9ce1215cb3b907732a0c0b3b62fc7.setIcon(icon_fc829bc25a68d1c45cc21c15ee5fefbb);
-        
-    
-        var popup_cfc18d37a4921a7ab17b1f7d7adee09d = L.popup({
-  "maxWidth": 300,
-  "autoClose": null,
-  "closeOnClick": null,
-});
-
-        
-            
-                var html_d8aa7986fa3dab00606af285f4e77f71 = $(`<div id="html_d8aa7986fa3dab00606af285f4e77f71" style="width: 100.0%; height: 100.0%;"><b>vench — Terrain</b><br><br>💰 Prix : 80000.0 €<br>📅 Vente : 23/11/2026<br>📍 CP : 34110<br><br>📝 UNE PARCELLE DE TERRAIN AVEC CONSTRUCTION À USAGE PROFESSIONNEL • Vic-la-Gardiole<br><br><a href="https://www.vench.fr/vente-167243-une-parcelle-de-terrain-avec-construction-a-usage-professionnel-vic-la-gardiole.html" target="_blank">Voir annonce</a></div>`)[0];
-                popup_cfc18d37a4921a7ab17b1f7d7adee09d.setContent(html_d8aa7986fa3dab00606af285f4e77f71);
-            
-        
-
-        marker_89a9ce1215cb3b907732a0c0b3b62fc7.bindPopup(popup_cfc18d37a4921a7ab17b1f7d7adee09d)
+        marker_00401b0a660d7d39350cff672938b651.bindPopup(popup_39c42425f169d4ea4b50b436efdf07c4)
         ;
 
         
