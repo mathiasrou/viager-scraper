@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_4164b71d324447d76656d06edf125b09 {
+                #map_b31b54b85a04cc4e64dc8a32197d4e09 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,14 +39,14 @@
 <body>
     
     
-            <div class="folium-map" id="map_4164b71d324447d76656d06edf125b09" ></div>
+            <div class="folium-map" id="map_b31b54b85a04cc4e64dc8a32197d4e09" ></div>
         
 </body>
 <script>
     
     
-            var map_4164b71d324447d76656d06edf125b09 = L.map(
-                "map_4164b71d324447d76656d06edf125b09",
+            var map_b31b54b85a04cc4e64dc8a32197d4e09 = L.map(
+                "map_b31b54b85a04cc4e64dc8a32197d4e09",
                 {
                     center: [46.5, 2.5],
                     crs: L.CRS.EPSG3857,
@@ -64,7 +64,7 @@
 
         
     
-            var tile_layer_8ee4c4b7010e135f32849588a8e09135 = L.tileLayer(
+            var tile_layer_b7ffe8da21823f0dcabdb8e57aef943f = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -81,19 +81,99 @@
             );
         
     
-            tile_layer_8ee4c4b7010e135f32849588a8e09135.addTo(map_4164b71d324447d76656d06edf125b09);
+            tile_layer_b7ffe8da21823f0dcabdb8e57aef943f.addTo(map_b31b54b85a04cc4e64dc8a32197d4e09);
         
     
-            var marker_6ce28cfe8275b54f6e8e48835fddd3ab = L.marker(
-                [43.11625642165245, 2.97018718700556],
+            var marker_296c37c793d013868ad87b8b4d1a8623 = L.marker(
+                [49.63691871526234, -1.283641620863106],
                 {
   "draggable": null,
   "autoPan": null,
 }
-            ).addTo(map_4164b71d324447d76656d06edf125b09);
+            ).addTo(map_b31b54b85a04cc4e64dc8a32197d4e09);
         
     
-            var icon_216659a85bb2ce80156f6036d9ecaa40 = L.AwesomeMarkers.icon(
+            var icon_a6b1bff345765b7470fa78091f47f485 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_296c37c793d013868ad87b8b4d1a8623.setIcon(icon_a6b1bff345765b7470fa78091f47f485);
+        
+    
+        var popup_156908e292891cecde6f4686b2d7e415 = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_3f6b77302e4cc52900424bfe49d93cb9 = $(`<div id="html_3f6b77302e4cc52900424bfe49d93cb9" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>📆 Rente : 875.0 €/mois<br>💼 Bouquet : 44700.0 €<br>👴 Age : 88.0 ans<br>📍 CP : 50760<br><br>📝 29 % de décote Viager occupé Ref. : 422550038 Maison - 3 pièces - 70m² Anneville-en-Saire (50760) Homme, 88 ans Bouquet FAI 44 700 € Rente 875 €/mois <br><br><a href="https://www.costes-viager.com/acheter/manche-50/anneville-en-saire/maison-3pieces-422550038" target="_blank">Voir annonce</a></div>`)[0];
+                popup_156908e292891cecde6f4686b2d7e415.setContent(html_3f6b77302e4cc52900424bfe49d93cb9);
+            
+        
+
+        marker_296c37c793d013868ad87b8b4d1a8623.bindPopup(popup_156908e292891cecde6f4686b2d7e415)
+        ;
+
+        
+    
+    
+            var marker_d89dca3ef95741c6ed747c47d1a1724d = L.marker(
+                [43.60070327269143, 1.432842540658348],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_b31b54b85a04cc4e64dc8a32197d4e09);
+        
+    
+            var icon_1ec11c13f4a0b7d8bd183113e0986841 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_d89dca3ef95741c6ed747c47d1a1724d.setIcon(icon_1ec11c13f4a0b7d8bd183113e0986841);
+        
+    
+        var popup_7fec94959430bd233831fc934775cbdb = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_f8db7e6a74fc52fbbc21d934c0d3a966 = $(`<div id="html_f8db7e6a74fc52fbbc21d934c0d3a966" style="width: 100.0%; height: 100.0%;"><b>costes — Maison</b><br><br>📆 Rente : 998.0 €/mois<br>💼 Bouquet : 135630.0 €<br>👴 Age : 80.0 ans<br>📍 CP : 31100<br><br>📝 36 % de décote Viager occupé Ref. : 422631143 Maison - 6 pièces - 137m² Toulouse (31100) Homme, 80 ans Bouquet FAI 135 630 € Rente 998 €/mois Valeur d<br><br><a href="https://www.costes-viager.com/acheter/haute-garonne-31/toulouse/maison-6pieces-422631143" target="_blank">Voir annonce</a></div>`)[0];
+                popup_7fec94959430bd233831fc934775cbdb.setContent(html_f8db7e6a74fc52fbbc21d934c0d3a966);
+            
+        
+
+        marker_d89dca3ef95741c6ed747c47d1a1724d.bindPopup(popup_7fec94959430bd233831fc934775cbdb)
+        ;
+
+        
+    
+    
+            var marker_4527c2313f3f754e0c6729e027180987 = L.marker(
+                [43.54531129584935, 7.015418162680283],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_b31b54b85a04cc4e64dc8a32197d4e09);
+        
+    
+            var icon_01bdbf482bb130ee36468a8e2925b6c8 = L.AwesomeMarkers.icon(
                 {
   "markerColor": "green",
   "iconColor": "white",
@@ -102,10 +182,10 @@
   "extraClasses": "fa-rotate-0",
 }
             );
-            marker_6ce28cfe8275b54f6e8e48835fddd3ab.setIcon(icon_216659a85bb2ce80156f6036d9ecaa40);
+            marker_4527c2313f3f754e0c6729e027180987.setIcon(icon_01bdbf482bb130ee36468a8e2925b6c8);
         
     
-        var popup_0a20de1e587d35b743340b9500ec5ec9 = L.popup({
+        var popup_7d7dc844f211c39b0993b0b9b0df4b4c = L.popup({
   "maxWidth": 300,
   "autoClose": null,
   "closeOnClick": null,
@@ -113,12 +193,172 @@
 
         
             
-                var html_d8eaaf189dd0bf71ac03e54367a17b90 = $(`<div id="html_d8eaaf189dd0bf71ac03e54367a17b90" style="width: 100.0%; height: 100.0%;"><b>encheres_immo — Autre</b><br><br>💰 Prix : 900000.0 €<br>📍 CP : 11100<br><br><a href="https://encheres-immo.com/annonce/ancien-domaine-viticole-comprenant-habitation-gites-et-love-room-narbonne-11100-2020" target="_blank">Voir annonce</a></div>`)[0];
-                popup_0a20de1e587d35b743340b9500ec5ec9.setContent(html_d8eaaf189dd0bf71ac03e54367a17b90);
+                var html_84c029ca66cc6922d25370d0be86b27e = $(`<div id="html_84c029ca66cc6922d25370d0be86b27e" style="width: 100.0%; height: 100.0%;"><b>encheres_immo — Autre</b><br><br>📍 CP : 06400<br><br><a href="https://encheres-immo.com/annonce/va53561-cannes-06400-4297" target="_blank">Voir annonce</a></div>`)[0];
+                popup_7d7dc844f211c39b0993b0b9b0df4b4c.setContent(html_84c029ca66cc6922d25370d0be86b27e);
             
         
 
-        marker_6ce28cfe8275b54f6e8e48835fddd3ab.bindPopup(popup_0a20de1e587d35b743340b9500ec5ec9)
+        marker_4527c2313f3f754e0c6729e027180987.bindPopup(popup_7d7dc844f211c39b0993b0b9b0df4b4c)
+        ;
+
+        
+    
+    
+            var marker_0e20f9186c71e42f0230793e4a1b0dd4 = L.marker(
+                [48.803872049965975, 2.119194752102928],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_b31b54b85a04cc4e64dc8a32197d4e09);
+        
+    
+            var icon_cdee3ebc3031923c8cad8a20e3f04640 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "building",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_0e20f9186c71e42f0230793e4a1b0dd4.setIcon(icon_cdee3ebc3031923c8cad8a20e3f04640);
+        
+    
+        var popup_cdd075960c7a8d0f9b72307c46bce060 = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_70b2dccb4c0e17028d8d6db4124a90b5 = $(`<div id="html_70b2dccb4c0e17028d8d6db4124a90b5" style="width: 100.0%; height: 100.0%;"><b>encheres_immo — Appartement</b><br><br>💰 Prix : 148000.0 €<br>📐 Surface : 25 m²<br>📍 CP : 78000<br><br><a href="https://encheres-immo.com/annonce/versailles-notre-dame-%E2%80%93-investissement-locatif-avec-parking-%E2%80%93-studio-25-m2-%E2%80%93-vente-interactive-versailles-78000-4559" target="_blank">Voir annonce</a></div>`)[0];
+                popup_cdd075960c7a8d0f9b72307c46bce060.setContent(html_70b2dccb4c0e17028d8d6db4124a90b5);
+            
+        
+
+        marker_0e20f9186c71e42f0230793e4a1b0dd4.bindPopup(popup_cdd075960c7a8d0f9b72307c46bce060)
+        ;
+
+        
+    
+    
+            var marker_97e40f33e7b0f9ad08d5028ac995ea35 = L.marker(
+                [43.30842292625969, 3.483799955313517],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_b31b54b85a04cc4e64dc8a32197d4e09);
+        
+    
+            var icon_94f39230ca73dcacf3fbe97d04834ee3 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "purple",
+  "iconColor": "white",
+  "icon": "building",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_97e40f33e7b0f9ad08d5028ac995ea35.setIcon(icon_94f39230ca73dcacf3fbe97d04834ee3);
+        
+    
+        var popup_320d97412df4eebfb2923ae088c892dd = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_197cb7f76c72e09a21c8cfc2d9c553d7 = $(`<div id="html_197cb7f76c72e09a21c8cfc2d9c553d7" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 25000.0 €<br>📐 Surface : 19 m²<br>📅 Vente : 15/12/2026<br>📍 CP : 34300<br><br>📝 UN APPARTEMENT STUDIO • 19m² • Agde<br><br><a href="https://www.vench.fr/vente-167278-un-appartement-studio-agde.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_320d97412df4eebfb2923ae088c892dd.setContent(html_197cb7f76c72e09a21c8cfc2d9c553d7);
+            
+        
+
+        marker_97e40f33e7b0f9ad08d5028ac995ea35.bindPopup(popup_320d97412df4eebfb2923ae088c892dd)
+        ;
+
+        
+    
+    
+            var marker_6271f843da2184ba244a423b81d33042 = L.marker(
+                [43.4218064349344, 5.217846815065169],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_b31b54b85a04cc4e64dc8a32197d4e09);
+        
+    
+            var icon_ddbb2c9509a2cef4de37373e3e366090 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "purple",
+  "iconColor": "white",
+  "icon": "building",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_6271f843da2184ba244a423b81d33042.setIcon(icon_ddbb2c9509a2cef4de37373e3e366090);
+        
+    
+        var popup_be8b167e23e1f2711505a910a3f17004 = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_9b29b18123b2d9f68d9b609f469494f1 = $(`<div id="html_9b29b18123b2d9f68d9b609f469494f1" style="width: 100.0%; height: 100.0%;"><b>vench — Appartement</b><br><br>💰 Prix : 44000.0 €<br>📐 Surface : 67,59 m²<br>📅 Vente : 11/01/2027<br>📍 CP : 13700<br><br>📝 UN APPARTEMENT ET UNE CAVE • 67,59m² • Marignane<br><br><a href="https://www.vench.fr/vente-167271-un-appartement-et-une-cave-marignane.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_be8b167e23e1f2711505a910a3f17004.setContent(html_9b29b18123b2d9f68d9b609f469494f1);
+            
+        
+
+        marker_6271f843da2184ba244a423b81d33042.bindPopup(popup_be8b167e23e1f2711505a910a3f17004)
+        ;
+
+        
+    
+    
+            var marker_2a44d068d169909bd17c9cd094865192 = L.marker(
+                [49.25354057262456, 4.0551079757832245],
+                {
+  "draggable": null,
+  "autoPan": null,
+}
+            ).addTo(map_b31b54b85a04cc4e64dc8a32197d4e09);
+        
+    
+            var icon_07fb113cd5e17be4324b0fa504a8d809 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "purple",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+            marker_2a44d068d169909bd17c9cd094865192.setIcon(icon_07fb113cd5e17be4324b0fa504a8d809);
+        
+    
+        var popup_1093a8685526f2d009b4dd7b73b4b13f = L.popup({
+  "maxWidth": 300,
+  "autoClose": null,
+  "closeOnClick": null,
+});
+
+        
+            
+                var html_842b663c80d6924bb43d2040f9df13e6 = $(`<div id="html_842b663c80d6924bb43d2040f9df13e6" style="width: 100.0%; height: 100.0%;"><b>vench — Autre</b><br><br>💰 Prix : 10000.0 €<br>📅 Vente : 10/12/2026<br>📍 CP : 51100<br><br>📝 UN EMPLACEMENT DE PARKING • Reims<br><br><a href="https://www.vench.fr/vente-167274-un-emplacement-de-parking-reims.html" target="_blank">Voir annonce</a></div>`)[0];
+                popup_1093a8685526f2d009b4dd7b73b4b13f.setContent(html_842b663c80d6924bb43d2040f9df13e6);
+            
+        
+
+        marker_2a44d068d169909bd17c9cd094865192.bindPopup(popup_1093a8685526f2d009b4dd7b73b4b13f)
         ;
 
         
